@@ -1,0 +1,16 @@
+:root {
+  color-scheme: dark;
+  --background: #0b0d10;
+  --surface: #111419;
+  --surface-secondary: #171b21;
+  --border: #242a33;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --accent: #8b9cf7;
+  --accent-muted: #202641;
+  --success: #72c69b;
+  --warning: #e4b568;
+  --danger: #ed8585;
+  --radius: 8px;
+  --shadow: 0 18px 60px rgb(0 0 0 / 35%);
+}
