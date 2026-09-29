@@ -104,7 +104,7 @@ export const adminService = {
     const idempotencyKey = requestId();
     return request(`/admin/reports/${id}/actions`, {
       ...json('POST', { action, reason, durationDays, idempotencyKey }),
-      headers: { 'X-Request-ID': requestId(), 'Idempotency-Key': idempotencyKey },
+      headers: { 'X-Request-ID': idempotencyKey, 'Idempotency-Key': idempotencyKey },
     });
   },
 

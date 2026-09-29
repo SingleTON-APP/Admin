@@ -54,10 +54,10 @@ export function ActionPanel({ report, admin, staff, onChanged }: {
     </div>
     {report.targetUser && <div className="action-group"><h3>Пользователь</h3>
       <button className="button secondary full-width" disabled={!!busy}
-        onClick={() => setPending({ kind: 'action', action: 'TEMPORARY_BAN', label: 'Заблокировать на 7 дней', durationDays: 7 })}>
+        onClick={() => setPending({ kind: 'action', action: 'TEMP_BAN_USER', label: 'Заблокировать на 7 дней', durationDays: 7 })}>
         Временная блокировка</button>
       {admin.role === 'FULL_ADMIN' && <button className="button danger full-width" disabled={!!busy}
-        onClick={() => setPending({ kind: 'action', action: 'PERMANENT_BAN', label: 'Заблокировать навсегда' })}>
+        onClick={() => setPending({ kind: 'action', action: 'PERMANENT_BAN_USER', label: 'Заблокировать навсегда' })}>
         Постоянная блокировка</button>}
     </div>}
     <div className="action-group"><h3>Решение</h3>
