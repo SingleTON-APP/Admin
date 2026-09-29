@@ -98,9 +98,11 @@ export function ModerationContextViewer({ reportId, role }: { reportId: string; 
   const [limits, setLimits] = useState({ before: 3, after: 3 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [extendedJustification, setExtendedJustification] = useState('');
   const load = async (next: ContextLevel, justification?: string, before = limits.before, after = limits.after) => {
     setLoading(true); setError('');
-    try { setContext(await adminService.reportContext(reportId, { level: next, before, after, justification })); setLevel(next); }
+    try { setContext(await adminService.reportContext(reportId, { level: next, before, after, justification })); setLevel(next);
+      if (next === 'EXTENDED' && justification) setExtendedJustification(justification); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Не удалось загрузить контекст'); }
     finally { setLoading(false); }
   };
@@ -112,10 +114,10 @@ export function ModerationContextViewer({ reportId, role }: { reportId: string; 
     {loading ? <LoadingState /> : error ? <ErrorState message={error} /> : context && <ContextContent value={context} />}
     {context?.kind === 'MESSAGE' && level !== 'REPORTED_ONLY' && <div className="context-pagination">
       <button className="button secondary" disabled={loading || context.hasMoreBefore === false} onClick={() => {
-        const next = { ...limits, before: limits.before + 5 }; setLimits(next); void load(level!, undefined, next.before, next.after);
+        const next = { ...limits, before: limits.before + 5 }; setLimits(next); void load(level!, level === 'EXTENDED' ? extendedJustification : undefined, next.before, next.after);
       }}>Показать ещё до</button>
       <button className="button secondary" disabled={loading || context.hasMoreAfter === false} onClick={() => {
-        const next = { ...limits, after: limits.after + 5 }; setLimits(next); void load(level!, undefined, next.before, next.after);
+        const next = { ...limits, after: limits.after + 5 }; setLimits(next); void load(level!, level === 'EXTENDED' ? extendedJustification : undefined, next.before, next.after);
       }}>Показать ещё после</button>
     </div>}
   </section>;
