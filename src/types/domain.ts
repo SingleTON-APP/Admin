@@ -64,8 +64,8 @@ export interface ModerationAttachment {
   durationSeconds?: number | null;
 }
 export interface ModerationMessage {
-  id: string; text: string | null; contentUnavailableReason?: string | null; author: ModerationAuthor | null;
-  createdAt?: string; messageSequence?: number | null; messageType?: string; status: string;
+  id: string; text?: string | null; contentUnavailableReason?: string | null; author?: ModerationAuthor | null;
+  createdAt?: string; messageSequence?: number | null; messageType?: string; status?: string;
   reply?: { messageId: string; authorId?: string | null; messageType?: string | null } | null;
   attachment?: ModerationAttachment | null; deleted?: boolean;
 }
@@ -89,7 +89,10 @@ export interface CommentContext {
   kind: 'COMMENT'; appliedLevel: ContextLevel; post: ModerationPost; parents: ModerationComment[];
   target: ModerationComment; siblings: ModerationComment[]; children: ModerationComment[];
 }
-export type ReportContextContent = MessageContext | PostContext | CommentContext;
+export interface GenericContext {
+  kind: 'USER' | 'CHAT' | 'MEDIA'; appliedLevel?: ContextLevel; target: { id?: string; deleted?: boolean; status?: string };
+}
+export type ReportContextContent = MessageContext | PostContext | CommentContext | GenericContext;
 
 export interface DashboardTrendPoint { date: string; count: number; secondary?: number; }
 export interface DashboardStatusItem {

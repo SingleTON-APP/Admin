@@ -47,12 +47,12 @@ export const adminService = {
   me: (signal?: AbortSignal) => request<StaffIdentity>('/admin/me', { signal }),
   dashboard: (signal?: AbortSignal) => request<Dashboard & {
     recentActions: RawAudit[];
-    registrationTrend: Array<{ date: string; count?: number; registrations?: number }>;
+    registrationTrend: Array<{ date: string; count?: number; registrations?: number; activeUsers?: number }>;
   }>('/admin/dashboard', { signal }).then((value) => ({
     ...value,
     recentActions: value.recentActions.map(auditEvent),
     registrationTrend: value.registrationTrend.map((point) => ({
-      date: point.date, count: point.count ?? point.registrations ?? 0,
+      date: point.date, count: Number(point.count ?? point.registrations ?? 0), secondary: Number(point.activeUsers ?? 0),
     })),
   })),
   users: (input: PageRequest & { status?: string; role?: string; sort?: string; order?: string }) =>
