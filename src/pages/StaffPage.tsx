@@ -35,7 +35,7 @@ export function StaffPage() {
     {
       key: 'id',
       header: 'ID',
-      render: (staff) => <IDDisplay value={staff.publicId} />,
+      render: (staff) => <IDDisplay value={staff.publicId || staff.id} />,
     },
     {
       key: 'role',
@@ -45,12 +45,15 @@ export function StaffPage() {
     {
       key: 'status',
       header: 'Статус',
-      render: (staff) => <StatusBadge value={staff.status} />,
+      render: (staff) => <StatusBadge value={staff.status ?? 'ACTIVE'} />,
     },
     {
       key: 'assigned',
       header: 'Назначен',
-      render: (staff) => new Date(staff.assignedAt).toLocaleDateString('ru-RU'),
+      render: (staff) =>
+        staff.assignedAt
+          ? new Date(staff.assignedAt).toLocaleDateString('ru-RU')
+          : '—',
     },
     {
       key: 'lastSeen',
