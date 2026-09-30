@@ -231,9 +231,9 @@ export const adminService = {
     id: string,
     action: ModerationAction,
     reason: string,
-    durationDays?: number,
+    durationDays: number | undefined,
+    idempotencyKey: string,
   ) => {
-    const idempotencyKey = requestId();
     return request(`/admin/reports/${id}/actions`, {
       ...json('POST', { action, reason, durationDays, idempotencyKey }),
       headers: {
