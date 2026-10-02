@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendChart,
@@ -35,6 +36,7 @@ const metricHints: Record<string, string> = {
 };
 
 export function DashboardPage() {
+  const [period, setPeriod] = useState<7 | 30>(30);
   const state = useAsync((signal) => adminService.dashboard(signal), []);
   if (state.loading)
     return (
@@ -90,11 +92,23 @@ export function DashboardPage() {
         <section className="card dashboard-panel">
           <div className="card-head">
             <div>
-              <span className="section-label">7 / 30 дней</span>
+              <label className="section-label">
+                Период{' '}
+                <select
+                  aria-label="Период графиков"
+                  value={period}
+                  onChange={(event) =>
+                    setPeriod(Number(event.target.value) as 7 | 30)
+                  }
+                >
+                  <option value={7}>7 дней</option>
+                  <option value={30}>30 дней</option>
+                </select>
+              </label>
               <h2>Динамика жалоб</h2>
             </div>
           </div>
-          <TrendChart points={data.reportTrend} label="Жалобы" />
+          <TrendChart points={data.reportTrend.slice(-period)} label="Жалобы" />
         </section>
         <section className="card dashboard-panel">
           <div className="card-head">
@@ -133,12 +147,12 @@ export function DashboardPage() {
         <section className="card dashboard-panel">
           <div className="card-head">
             <div>
-              <span className="section-label">30 дней</span>
+              <span className="section-label">{period} дней</span>
               <h2>Регистрации и активность</h2>
             </div>
           </div>
           <TrendChart
-            points={data.registrationTrend}
+            points={data.registrationTrend.slice(-period)}
             label="Регистрации"
             secondaryLabel={
               data.registrationTrend.some(
