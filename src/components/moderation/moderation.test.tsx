@@ -40,6 +40,25 @@ const report: Report = {
 };
 
 describe('moderation context', () => {
+  it('requires explicit justification before extended disclosure', () => {
+    const onSelect = vi.fn();
+    render(
+      <ContextLevelSwitcher active={null} role="ADMIN" onSelect={onSelect} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Расширенный' }));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Запросить доступ' }),
+    ).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Основание'), {
+      target: { value: 'Проверка повторных нарушений' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Запросить доступ' }));
+    expect(onSelect).toHaveBeenCalledWith(
+      'EXTENDED',
+      'Проверка повторных нарушений',
+    );
+  });
   it('keeps extended context unavailable to a moderator', () => {
     render(
       <ContextLevelSwitcher
@@ -122,6 +141,30 @@ describe('moderation context', () => {
 });
 
 describe('moderation actions', () => {
+  it('preserves the operation key when a destructive request is retried', async () => {
+    const operation = vi
+      .spyOn(adminService, 'moderateReportTarget')
+      .mockRejectedValueOnce(new Error('Сеть недоступна'))
+      .mockResolvedValueOnce({});
+    render(
+      <ActionPanel
+        report={report}
+        admin={moderator}
+        staff={[]}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Скрыть пост' }));
+    fireEvent.change(screen.getByLabelText('Причина'), {
+      target: { value: 'Подтверждённое нарушение правил' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Подтвердить' }));
+    await screen.findByText('Сеть недоступна');
+    fireEvent.click(screen.getByRole('button', { name: 'Подтвердить' }));
+    await waitFor(() => expect(operation).toHaveBeenCalledTimes(2));
+    expect(operation.mock.calls[0]?.[4]).toBeTruthy();
+    expect(operation.mock.calls[1]?.[4]).toBe(operation.mock.calls[0]?.[4]);
+  });
   it('hides forbidden destructive actions and requires confirmation', () => {
     const { unmount } = render(
       <ActionPanel

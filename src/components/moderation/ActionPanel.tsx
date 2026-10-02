@@ -274,7 +274,9 @@ export function ActionPanel({
           if (!note.trim()) return;
           void run('note', () =>
             adminService.addReportNote(report.id, note.trim()),
-          ).then(() => setNote(''));
+          ).then((succeeded) => {
+            if (succeeded) setNote('');
+          });
         }}
       >
         <label className="form-label">

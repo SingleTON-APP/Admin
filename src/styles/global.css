@@ -1768,6 +1768,8 @@ dialog > .dialog-actions {
 @media (max-width: 1500px) {
   .dashboard-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .queue-filters { grid-template-columns: minmax(300px, 2fr) repeat(3, minmax(120px, 1fr)); }
+}
+@media (max-width: 1250px) {
   .moderation-workbench { grid-template-columns: minmax(220px, .7fr) minmax(420px, 1.4fr); }
   .workbench-right { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
 }
