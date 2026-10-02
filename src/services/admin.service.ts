@@ -64,6 +64,7 @@ type RawReportDetails = Omit<ReportDetails, 'history' | 'notes'> & {
 };
 type RawDashboard = Omit<Dashboard, 'recentActions' | 'registrationTrend'> & {
   recentActions: RawAudit[];
+  activityTrend?: Array<{ date: string; activeUsers: number }>;
   registrationTrend: Array<{
     date: string;
     count?: number;
@@ -109,7 +110,17 @@ export const adminService = {
       registrationTrend: value.registrationTrend.map((point) => ({
         date: point.date,
         count: Number(point.count ?? point.registrations ?? 0),
-        secondary: Number(point.activeUsers ?? 0),
+        secondary:
+          point.activeUsers === undefined && !value.activityTrend
+            ? undefined
+            : Number(
+                point.activeUsers ??
+                  value.activityTrend?.find(
+                    (activity) =>
+                      activity.date.slice(0, 10) === point.date.slice(0, 10),
+                  )?.activeUsers ??
+                  0,
+              ),
       })),
     })),
   users: (
