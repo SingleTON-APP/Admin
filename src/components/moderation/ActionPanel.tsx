@@ -311,8 +311,25 @@ export function ActionPanel({
         >
           <div className="confirmation-target">
             <span>Точная цель</span>
-            <strong>{report.targetType}</strong>
-            <code>{report.targetId}</code>
+            <strong>
+              {pending?.kind === 'action' &&
+              ['TEMP_BAN_USER', 'PERMANENT_BAN_USER'].includes(pending.action)
+                ? 'Пользователь'
+                : report.targetType}
+            </strong>
+            <code>
+              {pending?.kind === 'action' &&
+              ['TEMP_BAN_USER', 'PERMANENT_BAN_USER'].includes(pending.action)
+                ? report.targetUser?.id
+                : report.targetId}
+            </code>
+            {pending?.kind === 'action' &&
+              ['TEMP_BAN_USER', 'PERMANENT_BAN_USER'].includes(
+                pending.action,
+              ) &&
+              report.targetUser?.username && (
+                <span>@{report.targetUser.username}</span>
+              )}
           </div>
           <label>
             Причина

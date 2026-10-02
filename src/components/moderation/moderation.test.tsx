@@ -141,6 +141,34 @@ describe('moderation context', () => {
 });
 
 describe('moderation actions', () => {
+  it('names the exact user in a sanction confirmation', () => {
+    render(
+      <ActionPanel
+        report={{
+          ...report,
+          targetUser: {
+            id: 'actual-user-id',
+            publicId: 'public-user-id',
+            username: 'subject',
+            firstName: 'Имя',
+            lastName: '',
+            avatar: null,
+            role: 'USER',
+          },
+        }}
+        admin={moderator}
+        staff={[]}
+        onChanged={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Временная блокировка' }),
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('actual-user-id');
+    expect(dialog).toHaveTextContent('@subject');
+    expect(dialog).not.toHaveTextContent('post-1');
+  });
   it('preserves the operation key when a destructive request is retried', async () => {
     const operation = vi
       .spyOn(adminService, 'moderateReportTarget')
