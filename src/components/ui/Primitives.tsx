@@ -23,15 +23,15 @@ export function Avatar({
 }
 
 export function StatusBadge({ value }: { value: string }) {
-  const tone = ['active', 'healthy', 'success', 'resolved', 'online'].includes(
+  const tone = ['active', 'healthy', 'success', 'resolved', 'online', 'активен', 'решена'].includes(
     value.toLowerCase(),
   )
     ? 'success'
-    : ['banned', 'down', 'critical', 'failed', 'deleted'].includes(
+    : ['banned', 'down', 'critical', 'failed', 'deleted', 'критичный', 'заблокирован'].includes(
           value.toLowerCase(),
         )
       ? 'danger'
-      : ['degraded', 'suspended', 'high', 'in review'].includes(
+      : ['degraded', 'suspended', 'high', 'in review', 'высокий', 'на рассмотрении'].includes(
             value.toLowerCase(),
           )
         ? 'warning'
@@ -52,6 +52,7 @@ export function IDDisplay({ value }: { value: string }) {
     <button
       className="id-display"
       title={value}
+      aria-label={`Скопировать идентификатор ${value}`}
       onClick={() => {
         void navigator.clipboard.writeText(value);
         setCopied(true);

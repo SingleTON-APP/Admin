@@ -2,14 +2,18 @@ import { request } from '../api/client';
 import type { PageRequest } from '../api/contracts';
 import type {
   AuditEvent,
+  ContextLevel,
   Dashboard,
   PageResult,
-  Report,
+  ReportContextContent,
   ReportDetails,
+  ReportPriority,
+  ReportsResult,
   ReportStatus,
+  ReportTargetType,
   StaffIdentity,
-  StaffSummary,
   StaffRole,
+  StaffSummary,
   SystemStatus,
   UserDetails,
   UserSummary,
@@ -17,13 +21,11 @@ import type {
 
 function queryString(values: Record<string, string | number | undefined>) {
   const params = new URLSearchParams();
-  Object.entries(values).forEach(
-    ([key, value]) =>
-      value !== undefined && value !== '' && params.set(key, String(value)),
-  );
+  Object.entries(values).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  });
   return params.toString();
 }
-
 const json = (
   method: string,
   body?: unknown,
@@ -33,11 +35,94 @@ const json = (
   signal,
   body: body === undefined ? undefined : JSON.stringify(body),
 });
+const requestId = () => crypto.randomUUID();
+type RawAudit = Partial<AuditEvent> & {
+  actor?: StaffSummary | null;
+  createdAt?: string;
+};
+const auditEvent = (value: RawAudit): AuditEvent => ({
+  id: value.id ?? '',
+  timestamp: value.timestamp ?? value.createdAt ?? '',
+  staff: value.staff ?? value.actor ?? null,
+  action: value.action ?? '',
+  targetType: value.targetType ?? '',
+  targetId: value.targetId ?? null,
+  reason: value.reason ?? null,
+  result: value.result ?? 'UNKNOWN',
+  metadata: value.metadata ?? {},
+});
+type RawNote = {
+  id: string;
+  body: string;
+  actor?: StaffSummary | null;
+  author?: StaffSummary | null;
+  createdAt: string;
+};
+type RawReportDetails = Omit<ReportDetails, 'history' | 'notes'> & {
+  history?: RawAudit[];
+  notes?: RawNote[];
+};
+type RawDashboard = Omit<Dashboard, 'recentActions' | 'registrationTrend'> & {
+  recentActions: RawAudit[];
+  activityTrend?: Array<{ date: string; activeUsers: number }>;
+  registrationTrend: Array<{
+    date: string;
+    count?: number;
+    registrations?: number;
+    activeUsers?: number;
+  }>;
+};
+const reportDetails = (value: RawReportDetails): ReportDetails => ({
+  ...value,
+  history: (value.history ?? []).map(auditEvent),
+  notes: (value.notes ?? []).map((note) => ({
+    ...note,
+    author: note.author ?? note.actor ?? null,
+  })),
+  targetRisk: value.targetRisk ?? { priorReports: 0, sanctions: [] },
+});
+
+export interface ReportsQuery extends PageRequest {
+  targetType?: ReportTargetType;
+  status?: ReportStatus;
+  priority?: ReportPriority;
+  assigneeId?: string;
+  olderThanHours?: number;
+  view?: 'new' | 'mine' | 'critical' | 'unassigned';
+  sort?: 'priority' | 'age' | 'updatedAt';
+  order?: 'asc' | 'desc';
+}
+export type ModerationAction =
+  | 'DELETE_MESSAGE'
+  | 'HIDE_POST'
+  | 'DELETE_POST'
+  | 'HIDE_COMMENT'
+  | 'DELETE_COMMENT'
+  | 'TEMP_BAN_USER'
+  | 'PERMANENT_BAN_USER';
 
 export const adminService = {
   me: (signal?: AbortSignal) => request<StaffIdentity>('/admin/me', { signal }),
   dashboard: (signal?: AbortSignal) =>
-    request<Dashboard>('/admin/dashboard', { signal }),
+    request<RawDashboard>('/admin/dashboard', { signal }).then((value) => ({
+      ...value,
+      recentActions: value.recentActions.map(auditEvent),
+      registrationTrend: value.registrationTrend.map((point) => ({
+        date: point.date,
+        count: Number(point.count ?? point.registrations ?? 0),
+        secondary:
+          point.activeUsers === undefined && !value.activityTrend
+            ? undefined
+            : Number(
+                point.activeUsers ??
+                  value.activityTrend?.find(
+                    (activity) =>
+                      activity.date.slice(0, 10) === point.date.slice(0, 10),
+                  )?.activeUsers ??
+                  0,
+              ),
+      })),
+    })),
   users: (
     input: PageRequest & {
       status?: string;
@@ -47,7 +132,15 @@ export const adminService = {
     },
   ) =>
     request<PageResult<UserSummary>>(
-      `/admin/users?${queryString({ page: input.page, limit: input.pageSize, search: input.search, status: input.status, role: input.role, sort: input.sort, order: input.order })}`,
+      `/admin/users?${queryString({
+        page: input.page,
+        limit: input.pageSize,
+        search: input.search,
+        status: input.status,
+        role: input.role,
+        sort: input.sort,
+        order: input.order?.toUpperCase(),
+      })}`,
       { signal: input.signal },
     ),
   user: (id: string, signal?: AbortSignal) =>
@@ -68,16 +161,68 @@ export const adminService = {
     request(`/admin/sessions/${sessionId}`, json('DELETE', { userId, reason })),
   revokeAllSessions: (id: string, reason: string) =>
     request(`/admin/users/${id}/sessions`, json('DELETE', { reason })),
-  reports: (input: PageRequest & { status?: string }) =>
-    request<PageResult<Report>>(
-      `/admin/reports?${queryString({ page: input.page, limit: input.pageSize, status: input.status })}`,
+
+  reports: (input: ReportsQuery) =>
+    request<
+      Omit<ReportsResult, 'counts'> & {
+        counts: Omit<ReportsResult['counts'], 'all'>;
+      }
+    >(
+      `/admin/reports?${queryString({
+        page: input.page,
+        limit: input.pageSize,
+        search: input.search,
+        targetType: input.targetType,
+        status: input.status,
+        priority: input.priority,
+        assigneeId: input.assigneeId,
+        olderThanHours: input.olderThanHours,
+        view: input.view?.toUpperCase(),
+        reportSort: input.sort,
+        reportOrder: input.order?.toUpperCase(),
+      })}`,
       { signal: input.signal },
-    ),
+    ).then((value) => ({
+      ...value,
+      counts: { all: value.total, ...value.counts },
+    })),
   report: (id: string, signal?: AbortSignal) =>
-    request<ReportDetails>(`/admin/reports/${id}`, { signal }),
+    request<ReportDetails>(`/admin/reports/${id}`, { signal }).then(
+      reportDetails,
+    ),
+  reportContext: (
+    id: string,
+    input: {
+      level: ContextLevel;
+      before?: number;
+      after?: number;
+      justification?: string;
+      signal?: AbortSignal;
+    },
+  ) =>
+    request<ReportContextContent>(`/admin/reports/${id}/context`, {
+      ...json(
+        'POST',
+        {
+          level: input.level,
+          before: input.before,
+          after: input.after,
+          justification: input.justification,
+        },
+        input.signal,
+      ),
+      headers: { 'X-Request-ID': requestId() },
+    }),
   takeReport: (id: string) =>
-    request<ReportDetails>(`/admin/reports/${id}/take`, json('POST')),
-  updateReport: (
+    request<ReportDetails>(`/admin/reports/${id}/take`, json('POST')).then(
+      reportDetails,
+    ),
+  assignReport: (id: string, staffUserId: string) =>
+    request<ReportDetails>(
+      `/admin/reports/${id}/assign`,
+      json('PATCH', { staffUserId }),
+    ).then(reportDetails),
+  updateReportStatus: (
     id: string,
     status: Extract<ReportStatus, 'RESOLVED' | 'REJECTED'>,
     reason: string,
@@ -85,14 +230,30 @@ export const adminService = {
     request<ReportDetails>(
       `/admin/reports/${id}/status`,
       json('PATCH', { status, reason }),
-    ),
-  assignReport: (id: string, staffUserId: string) =>
+    ).then(reportDetails),
+  updateReportPriority: (id: string, priority: ReportPriority) =>
     request<ReportDetails>(
-      `/admin/reports/${id}/assign`,
-      json('PATCH', { staffUserId }),
-    ),
-  deleteMessage: (id: string, reason: string) =>
-    request(`/admin/messages/${id}`, json('DELETE', { reason })),
+      `/admin/reports/${id}/priority`,
+      json('PATCH', { priority }),
+    ).then(reportDetails),
+  addReportNote: (id: string, body: string) =>
+    request<RawNote>(`/admin/reports/${id}/notes`, json('POST', { body })),
+  moderateReportTarget: (
+    id: string,
+    action: ModerationAction,
+    reason: string,
+    durationDays: number | undefined,
+    idempotencyKey: string,
+  ) => {
+    return request(`/admin/reports/${id}/actions`, {
+      ...json('POST', { action, reason, durationDays, idempotencyKey }),
+      headers: {
+        'X-Request-ID': idempotencyKey,
+        'Idempotency-Key': idempotencyKey,
+      },
+    });
+  },
+
   staff: (signal?: AbortSignal) =>
     request<StaffSummary[]>('/admin/staff', { signal }),
   changeRole: (id: string, role: StaffRole | 'USER', reason: string) =>
@@ -101,10 +262,10 @@ export const adminService = {
       json('PATCH', { role, reason }),
     ),
   audit: (input: PageRequest) =>
-    request<PageResult<AuditEvent>>(
+    request<PageResult<RawAudit>>(
       `/admin/audit?${queryString({ page: input.page, limit: input.pageSize })}`,
       { signal: input.signal },
-    ),
+    ).then((value) => ({ ...value, items: value.items.map(auditEvent) })),
   system: (signal?: AbortSignal) =>
     request<SystemStatus>('/admin/system', { signal }),
 };
