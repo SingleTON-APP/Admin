@@ -1,4 +1,4 @@
-import { auditActionLabel, auditTargetLabels } from '../types/audit-labels';
+import { auditActionLabel, auditTargetLabel } from '../types/audit-labels';
 import { AuditResult } from '../components/audit/AuditEventDetails';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -55,7 +55,7 @@ export function AuditPage() {
       header: 'Объект',
       render: (event) => (
         <span>
-          {auditTargetLabels[event.targetType] ?? event.targetType}
+          {auditTargetLabel(event.targetType)}
           <br />
           {event.targetId && <IDDisplay value={event.targetId} />}
         </span>

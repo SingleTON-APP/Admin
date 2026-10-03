@@ -64,10 +64,24 @@ export const auditContextLabels: Record<string, string> = {
   EXTENDED: 'Расширенный контекст',
 };
 export function auditActionLabel(action: string) {
-  return auditActionLabels[action] ?? 'Служебное действие';
+  return Object.hasOwn(auditActionLabels, action)
+    ? auditActionLabels[action]
+    : 'Служебное действие';
 }
 export function auditResultLabel(result: string) {
-  return auditResultLabels[result] ?? 'Неизвестный результат';
+  return Object.hasOwn(auditResultLabels, result)
+    ? auditResultLabels[result]
+    : 'Неизвестный результат';
+}
+export function auditTargetLabel(target: string) {
+  return Object.hasOwn(auditTargetLabels, target)
+    ? auditTargetLabels[target]
+    : target;
+}
+export function auditContextLabel(level: unknown) {
+  return typeof level === 'string' && Object.hasOwn(auditContextLabels, level)
+    ? auditContextLabels[level]
+    : undefined;
 }
 export function auditResultClass(result: string) {
   return result === 'SUCCESS'

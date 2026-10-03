@@ -1,7 +1,7 @@
 import type { AuditEvent } from '../../types/domain';
 import {
   auditActionLabel,
-  auditContextLabels,
+  auditContextLabel,
   auditResultClass,
   auditResultLabel,
 } from '../../types/audit-labels';
@@ -22,7 +22,7 @@ export function AuditEventDetails({ event }: { event: AuditEvent }) {
   const level =
     event.action === 'REPORT_CONTENT_VIEWED' &&
     typeof event.metadata.level === 'string'
-      ? auditContextLabels[event.metadata.level]
+      ? auditContextLabel(event.metadata.level)
       : undefined;
   return (
     <div className="audit-event-details">
