@@ -29,9 +29,9 @@ jobs:
       SSH_USER: ${{ secrets[format('{0}_SSH_USERNAME', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
       SSHPASS: ${{ secrets[format('{0}_SSH_PASSWORD', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
       SSH_KNOWN_HOSTS: ${{ secrets[format('{0}_SSH_KNOWN_HOSTS', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
-      ADMIN_HOST_PORT: ${{ vars.ADMIN_HOST_PORT }}
-      BACKEND_ORIGIN: ${{ vars.ADMIN_BACKEND_ORIGIN }}
-      ADMIN_NETWORK: ${{ vars.ADMIN_DOCKER_NETWORK }}
+      ADMIN_HOST_PORT: ${{ vars.ADMIN_HOST_PORT || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && '12228' || '') }}
+      BACKEND_ORIGIN: ${{ vars.ADMIN_BACKEND_ORIGIN || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'http://hub-backend-prod:5555' || 'http://hub-backend-dev:5555') }}
+      ADMIN_NETWORK: ${{ vars.ADMIN_DOCKER_NETWORK || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'hub-prod-net' || 'hub-dev-net') }}
       DEPLOY_TIER: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'prod' || 'dev' }}
     steps:
       - uses: actions/checkout@v4
