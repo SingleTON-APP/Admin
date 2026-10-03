@@ -32,7 +32,12 @@ export async function request<T>(
       ? undefined
       : await response.json().catch(() => undefined);
   if (!response.ok) {
-    if (response.status === 401 && !path.startsWith('/admin/auth/')) {
+    const publicAuthEndpoint = [
+      '/admin/auth/session',
+      '/admin/auth/gate',
+      '/admin/auth/login',
+    ].includes(path.split('?')[0] ?? path);
+    if (response.status === 401 && !publicAuthEndpoint) {
       adminCsrf = '';
       window.dispatchEvent(new Event(ADMIN_ACCESS_EXPIRED));
     }

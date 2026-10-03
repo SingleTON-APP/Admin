@@ -35,4 +35,40 @@ describe('Admin CSRF client', () => {
     expect(listener).toHaveBeenCalledTimes(1);
     window.removeEventListener(ADMIN_ACCESS_EXPIRED, listener);
   });
+  it.each([
+    '/admin/auth/staff',
+    '/admin/auth/staff/account-id',
+    '/admin/auth/shared-password',
+    '/admin/auth/logout',
+  ])('clears private access on protected auth endpoint %s', async (path) => {
+    const listener = vi.fn();
+    window.addEventListener(ADMIN_ACCESS_EXPIRED, listener);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('{}', { status: 401 })),
+    );
+    try {
+      await expect(request(path)).rejects.toThrow();
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener(ADMIN_ACCESS_EXPIRED, listener);
+    }
+  });
+  it.each(['/admin/auth/session', '/admin/auth/gate', '/admin/auth/login'])(
+    'handles public auth error locally for %s',
+    async (path) => {
+      const listener = vi.fn();
+      window.addEventListener(ADMIN_ACCESS_EXPIRED, listener);
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response('{}', { status: 401 })),
+      );
+      try {
+        await expect(request(path)).rejects.toThrow();
+        expect(listener).not.toHaveBeenCalled();
+      } finally {
+        window.removeEventListener(ADMIN_ACCESS_EXPIRED, listener);
+      }
+    },
+  );
 });
