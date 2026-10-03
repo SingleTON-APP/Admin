@@ -1,3 +1,4 @@
+import { AuditEventDetails } from '../components/audit/AuditEventDetails';
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ActionPanel } from '../components/moderation/ActionPanel';
@@ -85,14 +86,7 @@ export function ReportDetailsPage() {
                 {report.history.map((event) => (
                   <div key={event.id}>
                     <i />
-                    <span>
-                      <strong>{event.action.replaceAll('_', ' ')}</strong>
-                      <small>
-                        {event.staff?.name || 'Система'} ·{' '}
-                        {new Date(event.timestamp).toLocaleString('ru-RU')}
-                      </small>
-                      {event.reason && <small>{event.reason}</small>}
-                    </span>
+                    <AuditEventDetails event={event} />
                   </div>
                 ))}
               </div>

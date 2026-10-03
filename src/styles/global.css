@@ -2099,10 +2099,9 @@ dialog > .dialog-actions {
 }
 .queue-filters {
   display: grid;
-  grid-template-columns: minmax(300px, 1.8fr) repeat(
-      5,
-      minmax(110px, 0.65fr)
-    ) auto;
+  grid-template-columns:
+    minmax(300px, 1.8fr) repeat(5, minmax(110px, 0.65fr))
+    auto;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -2369,4 +2368,17 @@ dialog > .dialog-actions {
   .queue-search {
     grid-column: 1 / -1;
   }
+}
+
+.audit-event-details {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.audit-event-details .status {
+  width: fit-content;
+}
+.audit-event-details p {
+  margin: 2px 0;
+  overflow-wrap: anywhere;
 }
