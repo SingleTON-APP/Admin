@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  normalizeQueueParams,
+  queueQuery,
+} from '../components/moderation/queue-query';
+import { useQueueAutoRefresh } from '../hooks/useQueueAutoRefresh';
 import {
   reportPriorityLabel as priorityLabel,
   reportStatusLabel,
@@ -6,12 +11,7 @@ import {
 } from '../types/report-labels';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueueFilters } from '../components/moderation/QueueFilters';
-import type {
-  Report,
-  ReportPriority,
-  ReportStatus,
-  ReportTargetType,
-} from '../types/domain';
+import type { Report } from '../types/domain';
 import { useAsync } from '../hooks/useAsync';
 import { adminService } from '../services/admin.service';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -37,41 +37,27 @@ export function ReportsPage() {
   const [reload, setReload] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
-  const [params, setParams] = useSearchParams();
-  const page = Math.max(1, Number(params.get('page')) || 1);
+  const [rawParams, setParams] = useSearchParams();
+  const params = normalizeQueueParams(rawParams);
   const signature = params.toString();
-  const assigneeFilter = params.get('assignee');
-  const selectedView = params.get('view') as
-    'new' | 'mine' | 'critical' | 'unassigned' | null;
-  const effectiveView =
-    selectedView ??
-    (assigneeFilter === 'me'
-      ? 'mine'
-      : assigneeFilter === 'unassigned'
-        ? 'unassigned'
-        : undefined);
+  const rawSignature = rawParams.toString();
+  const query = queueQuery(params);
+  const page = query.page;
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [lastSuccess, setLastSuccess] = useState<number | null>(null);
+  const refresh = useCallback(() => setReload((value) => value + 1), []);
+  useEffect(() => {
+    if (signature !== rawSignature) setParams(signature, { replace: true });
+  }, [signature, rawSignature, setParams]);
   const state = useAsync(
-    (signal) =>
-      adminService.reports({
-        page,
-        pageSize: 25,
-        search: params.get('search') ?? undefined,
-        targetType: (params.get('targetType') as ReportTargetType) || undefined,
-        status: (params.get('status') as ReportStatus) || undefined,
-        priority: (params.get('priority') as ReportPriority) || undefined,
-        assigneeId: !['me', 'unassigned'].includes(assigneeFilter ?? '')
-          ? (assigneeFilter ?? undefined)
-          : undefined,
-        olderThanHours: Number(params.get('age')) || undefined,
-        view: effectiveView,
-        sort:
-          (params.get('sort') as 'priority' | 'age' | 'updatedAt') ||
-          'priority',
-        order: (params.get('order') as 'asc' | 'desc') || 'desc',
-        signal,
-      }),
+    async (signal) => {
+      const result = await adminService.reports({ ...query, signal });
+      if (!signal.aborted) setLastSuccess(Date.now());
+      return result;
+    },
     [signature, reload],
   );
+  useQueueAutoRefresh(autoRefresh, state.loading, refresh);
 
   const update = (changes: Record<string, string>) => {
     const next = new URLSearchParams(params);
@@ -167,13 +153,23 @@ export function ReportsPage() {
         eyebrow="Модерация"
         title="Очередь жалоб"
         actions={
-          <button
-            className="button secondary"
-            disabled={state.loading}
-            onClick={() => setReload((value) => value + 1)}
-          >
-            Обновить
-          </button>
+          <div className="dialog-actions">
+            <label>
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(event) => setAutoRefresh(event.target.checked)}
+              />{' '}
+              Автообновление · 60 с
+            </label>
+            <button
+              className="button secondary"
+              disabled={state.loading}
+              onClick={refresh}
+            >
+              Обновить
+            </button>
+          </div>
         }
         description={
           state.data
@@ -181,6 +177,13 @@ export function ReportsPage() {
             : 'Единая очередь модерации'
         }
       />
+      <p className="data-note" aria-live="polite">
+        {lastSuccess
+          ? `Последнее успешное обновление: ${new Date(lastSuccess).toLocaleTimeString('ru-RU')}`
+          : 'Очередь ещё не обновлена'}
+        {autoRefresh &&
+          ' · В скрытой вкладке автообновление приостанавливается'}
+      </p>
       <QueueFilters
         params={params}
         counts={state.data?.counts}
@@ -191,10 +194,7 @@ export function ReportsPage() {
       ) : state.error || !state.data ? (
         <section>
           <ErrorState message={state.error ?? 'Нет данных'} />
-          <button
-            className="button secondary"
-            onClick={() => setReload((value) => value + 1)}
-          >
+          <button className="button secondary" onClick={refresh}>
             Повторить загрузку
           </button>
         </section>
