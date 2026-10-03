@@ -17,13 +17,16 @@ also available and validates lint/typecheck/tests first. Environments:
 `production` for main and `development` for develop. Keep any desired environment
 approval rules configured in GitHub. Feature/PR builds cannot deploy.
 
-Required environment variables (GitHub environment Variables):
+Environment variables (GitHub environment Variables) override the defaults:
 
-| Variable             | Meaning                                                         |
-| -------------------- | --------------------------------------------------------------- |
-| ADMIN_HOST_PORT      | Dedicated unoccupied localhost port, 1024–65535                 |
-| ADMIN_BACKEND_ORIGIN | Back-Hub origin reachable from the Docker network, no /api path |
-| ADMIN_DOCKER_NETWORK | Existing external Docker network shared with Back-Hub           |
+| Variable             | Default / meaning                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| ADMIN_HOST_PORT      | Production: user-selected 12228. Development must specify its own free port.           |
+| ADMIN_BACKEND_ORIGIN | http://hub-backend-prod:5555 / http://hub-backend-dev:5555, matching Back-Hub compose. |
+| ADMIN_DOCKER_NETWORK | hub-prod-net / hub-dev-net, matching the existing backend workflows.                   |
+
+The server port is checked before replacing any container. An unrelated listener
+on the selected port aborts the release. Docker also enforces exclusive binding.
 
 Required environment secrets, matching the Hub-core naming scheme:
 `PROD_SSH_HOST`, `PROD_SSH_PORT`, `PROD_SSH_USERNAME`, `PROD_SSH_PASSWORD`,
@@ -34,7 +37,7 @@ actually grant Admin access; credentials from another repository are not copied.
 Missing configuration fails before remote writes. No real secrets are committed.
 
 Server requirements: Docker with compose plugin supporting --wait, gzip, curl,
-python3 and flock, SSH access, the selected external network. Each release goes
+python3, flock and ss, SSH access, the selected external network. Each release goes
 into `/home/deploy/{prod|dev}/Hub/Admin/releases/<sha>` and uses compose project
 `singleton-admin-{prod|dev}`. The runner transfers a Docker image over SSH;
 no Docker registry credential is required. Static and real admin session API
@@ -55,8 +58,12 @@ using secret files. The frontend deployment never creates or resets accounts,
 never injects passwords into VITE_ variables and never bypasses auth guards.
 
 This change creates the pipeline; it does not configure repository secrets,
-DNS/public nginx or initialize a production database. A blank-screen diagnosis
-still requires the actual deployed Admin URL and browser/API error evidence.
+DNS/public nginx or initialize a production database. The requested production
+site is admin.hub-net.org. Its existing HTTPS virtual host must proxy all Admin
+routes to http://127.0.0.1:12228 (or the overridden port). Preserve the existing
+TLS certificate settings. A production release also checks the public auth API
+route; an unhealthy public route triggers rollback. The observed site returned
+502 Connection refused before deployment, not a React render error.
 
 ## Local development
 
