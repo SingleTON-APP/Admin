@@ -54,4 +54,15 @@ describe('accessible utility controls', () => {
       screen.getByRole('dialog', { name: 'Подтвердить удаление' }),
     ).toBeInTheDocument();
   });
+  it('prevents Escape from dismissing an operation in progress', () => {
+    render(
+      <Dialog open dismissDisabled title="Выполняется" onClose={vi.fn()}>
+        Операция
+      </Dialog>,
+    );
+    const event = new Event('cancel', { cancelable: true });
+    fireEvent(screen.getByRole('dialog'), event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(screen.getByRole('button', { name: 'Закрыть' })).toBeDisabled();
+  });
 });
