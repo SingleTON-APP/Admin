@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UsagePanel } from '../components/dashboard/UsagePanel';
 import { Link } from 'react-router-dom';
 import {
   TrendChart,
@@ -163,6 +164,7 @@ export function DashboardPage() {
               </p>
             </section>
           </div>
+          <UsagePanel days={period} />
         </>
       )}
     </>

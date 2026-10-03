@@ -40,7 +40,14 @@ export const navigation: NavigationItem[] = [
     title: 'Сотрудники',
     group: 'Управление',
     icon: 'users',
-    roles: managers,
+    roles: ['FULL_ADMIN'],
+  },
+  {
+    path: '/admin/security',
+    title: 'Безопасность',
+    group: 'Управление',
+    icon: 'lock',
+    roles: ['FULL_ADMIN'],
   },
   {
     path: '/admin/audit',

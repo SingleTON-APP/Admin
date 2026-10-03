@@ -1,6 +1,7 @@
+import { usageService } from '../services/usage.service';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminContext } from '../features/admin-access/AdminContext';
 import { adminService } from '../services/admin.service';
 import type { Dashboard, StaffRole } from '../types/domain';
@@ -48,6 +49,7 @@ function mount(role: StaffRole = 'ADMIN') {
     </MemoryRouter>,
   );
 }
+beforeEach(() => vi.spyOn(usageService, 'summary').mockResolvedValue({ available: false, days: 7, timezone: 'UTC', measurement: 'FOREGROUND_DEVICE_TIME', coverage: 'INSTRUMENTED_AUTHENTICATED_CLIENTS_ONLY', platforms: [], totals: null, buckets: [], daily: [] }));
 afterEach(() => vi.restoreAllMocks());
 
 describe('dashboard operations', () => {
