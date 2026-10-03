@@ -1,0 +1,88 @@
+name: Deploy Admin
+
+on:
+  workflow_run:
+    workflows: [Admin CI]
+    types: [completed]
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (github.ref_name == 'main' || github.ref_name == 'develop')) ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    environment: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'production' || 'development' }}
+    env:
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      SSH_HOST: ${{ secrets[format('{0}_SSH_HOST', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
+      SSH_PORT: ${{ secrets[format('{0}_SSH_PORT', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
+      SSH_USER: ${{ secrets[format('{0}_SSH_USERNAME', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
+      SSHPASS: ${{ secrets[format('{0}_SSH_PASSWORD', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
+      SSH_KNOWN_HOSTS: ${{ secrets[format('{0}_SSH_KNOWN_HOSTS', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
+      ADMIN_HOST_PORT: ${{ vars.ADMIN_HOST_PORT }}
+      BACKEND_ORIGIN: ${{ vars.ADMIN_BACKEND_ORIGIN }}
+      ADMIN_NETWORK: ${{ vars.ADMIN_DOCKER_NETWORK }}
+      DEPLOY_TIER: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'prod' || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in SSH_HOST SSH_PORT SSH_USER SSHPASS SSH_KNOWN_HOSTS ADMIN_HOST_PORT BACKEND_ORIGIN ADMIN_NETWORK; do
+            if [[ -z "${!name}" ]]; then echo "::error::Missing $name; configure Admin environment before deployment"; exit 1; fi
+          done
+          [[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$SSH_PORT" =~ ^[0-9]{1,5}$ && "$ADMIN_HOST_PORT" =~ ^[0-9]{1,5}$ ]]
+          (( SSH_PORT >= 1 && SSH_PORT <= 65535 && ADMIN_HOST_PORT >= 1024 && ADMIN_HOST_PORT <= 65535 ))
+          [[ "$SSH_USER" =~ ^[a-zA-Z0-9_-]+$ && "$SSH_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          [[ "$ADMIN_NETWORK" =~ ^[a-zA-Z0-9_.-]+$ ]]
+          [[ "$BACKEND_ORIGIN" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]{1,5})?$ ]]
+      - uses: actions/setup-node@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Validate manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+      - name: Build the verified frontend image
+        run: |
+          docker build --build-arg VITE_API_URL=/api -t "singleton-admin:$DEPLOY_SHA" .
+          docker save "singleton-admin:$DEPLOY_SHA" | gzip > admin-image.tar.gz
+      - name: Prepare verified SSH connection
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Transfer isolated Admin release
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="/home/deploy/$DEPLOY_TIER/Hub/Admin"
+          printf 'ADMIN_IMAGE=singleton-admin:%s\nADMIN_HOST_PORT=%s\nBACKEND_ORIGIN=%s\nADMIN_NETWORK=%s\n' "$DEPLOY_SHA" "$ADMIN_HOST_PORT" "$BACKEND_ORIGIN" "$ADMIN_NETWORK" > admin-release.env
+          sshpass -e ssh -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$target/releases/$DEPLOY_SHA'"
+          sshpass -e scp -o StrictHostKeyChecking=yes -P "$SSH_PORT" admin-image.tar.gz admin-release.env docker-compose.yml scripts/deploy-admin.sh "$SSH_USER@$SSH_HOST:$target/releases/$DEPLOY_SHA/"
+          sshpass -e ssh -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "bash '$target/releases/$DEPLOY_SHA/deploy-admin.sh' '$target' '$DEPLOY_SHA' 'singleton-admin-$DEPLOY_TIER'"
+      - name: Remove transfer files
+        if: always()
+        run: rm -f admin-image.tar.gz admin-release.env

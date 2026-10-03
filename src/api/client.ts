@@ -1,8 +1,9 @@
 import { ApiError } from './contracts';
 
-const API_URL = (
-  import.meta.env.VITE_API_URL ?? 'http://localhost:11001/api'
-).replace(/\/$/, '');
+const API_URL = (import.meta.env.VITE_API_URL?.trim() || '/api').replace(
+  /\/$/,
+  '',
+);
 
 let adminCsrf = '';
 export function setAdminCsrf(token: string) {
