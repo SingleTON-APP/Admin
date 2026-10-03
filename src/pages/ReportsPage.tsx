@@ -1,3 +1,9 @@
+import { useState } from 'react';
+import {
+  reportPriorityLabel as priorityLabel,
+  reportStatusLabel,
+  reportTargetLabel as targetLabel,
+} from '../types/report-labels';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueueFilters } from '../components/moderation/QueueFilters';
 import type {
@@ -17,20 +23,6 @@ import {
   StatusBadge,
 } from '../components/ui/Primitives';
 
-const priorityLabel: Record<ReportPriority, string> = {
-  LOW: 'Низкий',
-  MEDIUM: 'Средний',
-  HIGH: 'Высокий',
-  CRITICAL: 'Критичный',
-};
-const targetLabel: Record<ReportTargetType, string> = {
-  USER: 'Пользователь',
-  MESSAGE: 'Сообщение',
-  CHAT: 'Чат',
-  POST: 'Пост',
-  COMMENT: 'Комментарий',
-  MEDIA: 'Медиа',
-};
 const age = (value: string) => {
   const milliseconds = Date.now() - new Date(value).getTime();
   const hours = Math.max(0, Math.floor(milliseconds / 3_600_000));
@@ -42,6 +34,7 @@ const age = (value: string) => {
 };
 
 export function ReportsPage() {
+  const [reload, setReload] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
@@ -77,7 +70,7 @@ export function ReportsPage() {
         order: (params.get('order') as 'asc' | 'desc') || 'desc',
         signal,
       }),
-    [signature],
+    [signature, reload],
   );
 
   const update = (changes: Record<string, string>) => {
@@ -143,7 +136,7 @@ export function ReportsPage() {
       key: 'status',
       header: 'Статус',
       render: (report) => (
-        <StatusBadge value={report.status.replace('_', ' ')} />
+        <StatusBadge value={reportStatusLabel[report.status]} />
       ),
     },
     {
@@ -171,25 +164,40 @@ export function ReportsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Moderation"
+        eyebrow="Модерация"
         title="Очередь жалоб"
+        actions={
+          <button
+            className="button secondary"
+            disabled={state.loading}
+            onClick={() => setReload((value) => value + 1)}
+          >
+            Обновить
+          </button>
+        }
         description={
           state.data
             ? `${state.data.total.toLocaleString('ru-RU')} жалоб по текущим фильтрам`
             : 'Единая очередь модерации'
         }
       />
-      {state.data && (
-        <QueueFilters
-          params={params}
-          counts={state.data.counts}
-          onChange={update}
-        />
-      )}
+      <QueueFilters
+        params={params}
+        counts={state.data?.counts}
+        onChange={update}
+      />
       {state.loading ? (
         <LoadingState />
       ) : state.error || !state.data ? (
-        <ErrorState message={state.error ?? 'Нет данных'} />
+        <section>
+          <ErrorState message={state.error ?? 'Нет данных'} />
+          <button
+            className="button secondary"
+            onClick={() => setReload((value) => value + 1)}
+          >
+            Повторить загрузку
+          </button>
+        </section>
       ) : (
         <section className="card table-card reports-table">
           <DataTable

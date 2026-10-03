@@ -1,4 +1,9 @@
 import { useState, type FormEvent } from 'react';
+import {
+  reportPriorityLabel,
+  reportStatusLabel,
+  reportTargetLabel,
+} from '../../types/report-labels';
 import type {
   ReportPriority,
   ReportQueueCounts,
@@ -19,49 +24,47 @@ export function QueueFilters({
   onChange,
 }: {
   params: URLSearchParams;
-  counts: ReportQueueCounts;
+  counts?: ReportQueueCounts;
   onChange: (changes: Record<string, string>) => void;
 }) {
-  const [search, setSearch] = useState(params.get('search') ?? '');
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    onChange({ search: search.trim() });
-  };
+  const [searchReset, setSearchReset] = useState(0);
+  const currentView =
+    params.get('view') ??
+    (params.get('assignee') === 'me'
+      ? 'mine'
+      : params.get('assignee') === 'unassigned'
+        ? 'unassigned'
+        : '');
   return (
     <>
       <nav className="queue-tabs" aria-label="Представления очереди">
         <button
-          className={!params.get('view') ? 'active' : ''}
-          onClick={() => onChange({ view: '' })}
+          className={!currentView ? 'active' : ''}
+          aria-pressed={!currentView}
+          onClick={() => onChange({ view: '', assignee: '' })}
         >
-          Все <strong>{counts.all}</strong>
+          Все <strong>{counts?.all?.toLocaleString('ru-RU') ?? '—'}</strong>
         </button>
         {views.map(([key, label]) => (
           <button
             key={key}
-            className={params.get('view') === key ? 'active' : ''}
-            onClick={() => onChange({ view: key })}
+            className={currentView === key ? 'active' : ''}
+            aria-pressed={currentView === key}
+            onClick={() =>
+              onChange({ view: key, assignee: '', status: '', priority: '' })
+            }
           >
             {label}
-            <strong>{counts[key]}</strong>
+            <strong>{counts?.[key]?.toLocaleString('ru-RU') ?? '—'}</strong>
           </button>
         ))}
       </nav>
       <div className="queue-filters">
-        <form className="queue-search" onSubmit={submit}>
-          <label className="sr-only" htmlFor="report-search">
-            Поиск жалоб
-          </label>
-          <input
-            id="report-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Report ID, target ID, user ID или username"
-          />
-          <button className="button secondary" type="submit">
-            Найти
-          </button>
-        </form>
+        <QueueSearch
+          key={`${params.get('search') ?? ''}:${searchReset}`}
+          initialSearch={params.get('search') ?? ''}
+          onChange={onChange}
+        />
         <label>
           Объект
           <select
@@ -80,7 +83,9 @@ export function QueueFilters({
                 'MEDIA',
               ] satisfies ReportTargetType[]
             ).map((value) => (
-              <option key={value}>{value}</option>
+              <option key={value} value={value}>
+                {reportTargetLabel[value]}
+              </option>
             ))}
           </select>
         </label>
@@ -100,7 +105,9 @@ export function QueueFilters({
                 'REJECTED',
               ] satisfies ReportStatus[]
             ).map((value) => (
-              <option key={value}>{value}</option>
+              <option key={value} value={value}>
+                {reportStatusLabel[value]}
+              </option>
             ))}
           </select>
         </label>
@@ -115,7 +122,9 @@ export function QueueFilters({
             {(
               ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] satisfies ReportPriority[]
             ).map((value) => (
-              <option key={value}>{value}</option>
+              <option key={value} value={value}>
+                {reportPriorityLabel[value]}
+              </option>
             ))}
           </select>
         </label>
@@ -124,7 +133,9 @@ export function QueueFilters({
           <select
             aria-label="Исполнитель"
             value={params.get('assignee') ?? ''}
-            onChange={(event) => onChange({ assignee: event.target.value })}
+            onChange={(event) =>
+              onChange({ assignee: event.target.value, view: '' })
+            }
           >
             <option value="">Все</option>
             <option value="me">Я</option>
@@ -156,10 +167,21 @@ export function QueueFilters({
             <option value="updatedAt">Обновление</option>
           </select>
         </label>
+        <label>
+          Направление
+          <select
+            aria-label="Направление сортировки"
+            value={params.get('order') ?? 'desc'}
+            onChange={(event) => onChange({ order: event.target.value })}
+          >
+            <option value="desc">По убыванию</option>
+            <option value="asc">По возрастанию</option>
+          </select>
+        </label>
         <button
           className="button ghost"
           onClick={() => {
-            setSearch('');
+            setSearchReset((value) => value + 1);
             onChange({
               view: '',
               search: '',
@@ -177,5 +199,35 @@ export function QueueFilters({
         </button>
       </div>
     </>
+  );
+}
+
+function QueueSearch({
+  initialSearch,
+  onChange,
+}: {
+  initialSearch: string;
+  onChange: (changes: Record<string, string>) => void;
+}) {
+  const [search, setSearch] = useState(initialSearch);
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    onChange({ search: search.trim() });
+  };
+  return (
+    <form className="queue-search" onSubmit={submit}>
+      <label className="sr-only" htmlFor="report-search">
+        Поиск жалоб
+      </label>
+      <input
+        id="report-search"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="ID жалобы, объекта, пользователя или username"
+      />
+      <button className="button secondary" type="submit">
+        Найти
+      </button>
+    </form>
   );
 }

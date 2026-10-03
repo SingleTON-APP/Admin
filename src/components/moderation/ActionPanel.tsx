@@ -296,6 +296,7 @@ export function ActionPanel({
         </button>
       </form>
       <Dialog
+        dismissDisabled={!!busy}
         open={!!pending}
         title={pending?.label ?? 'Подтверждение'}
         onClose={() => {
