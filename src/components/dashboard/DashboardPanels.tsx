@@ -1,3 +1,4 @@
+import { auditActionLabel, auditResultLabel } from '../../types/audit-labels';
 import { Link } from 'react-router-dom';
 import type { Dashboard } from '../../types/domain';
 import { StatCard } from '../ui/Primitives';
@@ -155,37 +156,6 @@ export function QueueAgePanel({ queue }: { queue: Dashboard['queueAge'] }) {
     </section>
   );
 }
-const actionLabels: Record<string, string> = {
-  REPORT_TAKE: 'Жалоба взята в работу',
-  REPORT_ASSIGN: 'Назначен исполнитель',
-  REPORT_PRIORITY_CHANGE: 'Изменён приоритет',
-  REPORT_OPEN: 'Жалоба открыта',
-  REPORT_IN_REVIEW: 'Жалоба на рассмотрении',
-  REPORT_RESOLVED: 'Жалоба завершена',
-  REPORT_REJECTED: 'Жалоба отклонена',
-  REPORT_CONTENT_VIEWED: 'Просмотр контекста',
-  REPORT_TAKEN: 'Жалоба взята в работу',
-  REPORT_ASSIGNED: 'Назначен исполнитель',
-  REPORT_PRIORITY_CHANGED: 'Изменён приоритет',
-  REPORT_STATUS_CHANGED: 'Изменён статус',
-  REPORT_NOTE_ADDED: 'Добавлен комментарий',
-  MODERATION_DELETE_MESSAGE: 'Удалено сообщение',
-  MODERATION_HIDE_POST: 'Скрыт пост',
-  MODERATION_DELETE_POST: 'Удалён пост',
-  MODERATION_HIDE_COMMENT: 'Скрыт комментарий',
-  MODERATION_DELETE_COMMENT: 'Удалён комментарий',
-  MODERATION_TEMP_BAN_USER: 'Временная блокировка',
-  MODERATION_PERMANENT_BAN_USER: 'Постоянная блокировка',
-  MODERATION_RESOLVE_REPORT: 'Жалоба завершена',
-  MODERATION_REJECT_REPORT: 'Жалоба отклонена',
-  MODERATION_NO_VIOLATION: 'Нарушение не подтверждено',
-};
-const resultLabels: Record<string, string> = {
-  SUCCESS: 'Успешно',
-  FAILED: 'Ошибка',
-  DENIED: 'Отказано',
-  PENDING: 'Ожидает сверки',
-};
 export function RecentActionsPanel({
   events,
   canOpenAudit,
@@ -210,11 +180,11 @@ export function RecentActionsPanel({
               className={`status status-${event.result === 'SUCCESS' ? 'success' : ['FAILED', 'DENIED'].includes(event.result) ? 'danger' : event.result === 'PENDING' ? 'warning' : 'neutral'}`}
             >
               <i />
-              {resultLabels[event.result] ?? 'Нет данных'}
+              {auditResultLabel(event.result)}
             </span>
             <span>
               <strong title={event.action}>
-                {actionLabels[event.action] ?? 'Служебное действие'}
+                {auditActionLabel(event.action)}
               </strong>
               <small>{event.staff?.name || 'Система'}</small>
               {event.targetType === 'REPORT' && event.targetId ? (
