@@ -1,0 +1,21 @@
+services:
+  admin:
+    image: ${ADMIN_IMAGE:?ADMIN_IMAGE required}
+    restart: unless-stopped
+    environment:
+      BACKEND_ORIGIN: ${BACKEND_ORIGIN:?BACKEND_ORIGIN required}
+    ports:
+      - 127.0.0.1:${ADMIN_HOST_PORT:?ADMIN_HOST_PORT required}:8080
+    networks:
+      - hub
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+networks:
+  hub:
+    external: true
+    name: ${ADMIN_NETWORK:?ADMIN_NETWORK required}
