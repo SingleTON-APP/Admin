@@ -1,3 +1,5 @@
+import { AdminAccessBoundary } from '../features/admin-access/AdminAccessBoundary';
+import { SecurityPage } from '../pages/SecurityPage';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
 import { AuditPage } from '../pages/AuditPage';
@@ -12,7 +14,11 @@ import { UsersPage } from '../pages/UsersPage';
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/admin" replace /> },
   {
-    element: <AppShell />,
+    element: (
+      <AdminAccessBoundary>
+        <AppShell />
+      </AdminAccessBoundary>
+    ),
     children: [
       { path: '/admin', element: <DashboardPage /> },
       { path: '/admin/users', element: <UsersPage /> },
@@ -20,6 +26,7 @@ export const router = createBrowserRouter([
       { path: '/admin/reports', element: <ReportsPage /> },
       { path: '/admin/reports/:id', element: <ReportDetailsPage /> },
       { path: '/admin/staff', element: <StaffPage /> },
+      { path: '/admin/security', element: <SecurityPage /> },
       { path: '/admin/audit', element: <AuditPage /> },
       { path: '/admin/system', element: <SystemPage /> },
       { path: '*', element: <Navigate to="/admin" replace /> },

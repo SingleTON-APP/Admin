@@ -24,7 +24,7 @@ export const navigation: NavigationItem[] = [
     icon: 'shield',
   },
   {
-    path: '/admin/reports?status=IN_REVIEW',
+    path: '/admin/reports?view=mine',
     title: 'Моя очередь',
     group: 'Модерация',
     icon: 'shield',
@@ -40,7 +40,14 @@ export const navigation: NavigationItem[] = [
     title: 'Сотрудники',
     group: 'Управление',
     icon: 'users',
-    roles: managers,
+    roles: ['FULL_ADMIN'],
+  },
+  {
+    path: '/admin/security',
+    title: 'Безопасность',
+    group: 'Управление',
+    icon: 'lock',
+    roles: ['FULL_ADMIN'],
   },
   {
     path: '/admin/audit',
@@ -57,3 +64,19 @@ export const navigation: NavigationItem[] = [
     roles: managers,
   },
 ];
+
+export function isNavigationActive(
+  path: string,
+  pathname: string,
+  search: string,
+) {
+  const params = new URLSearchParams(search);
+  const mine =
+    params.get('view') === 'mine' ||
+    (!params.get('view') && params.get('assignee') === 'me');
+  if (path.includes('?view=mine')) return pathname === '/admin/reports' && mine;
+  if (path === '/admin/reports' && pathname === '/admin/reports') return !mine;
+  return path === '/admin'
+    ? pathname === path
+    : pathname === path || pathname.startsWith(`${path}/`);
+}

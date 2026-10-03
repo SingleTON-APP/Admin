@@ -1,15 +1,25 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { appConfig } from '../../config/app';
-import { navigation } from '../../config/navigation';
-import { AdminContext } from '../../features/admin-access/AdminContext';
-import { useAsync } from '../../hooks/useAsync';
-import { adminService } from '../../services/admin.service';
-import { Avatar, ErrorState, LoadingState } from '../ui/Primitives';
+import { isNavigationActive, navigation } from '../../config/navigation';
+import { useAdmin } from '../../features/admin-access/AdminContext';
+import { useAdminLogout } from '../../features/admin-access/LogoutContext';
+import { Avatar } from '../ui/Primitives';
 import { Icon } from '../ui/Icon';
 
+const routeLabels: Record<string, string> = {
+  admin: 'Админка',
+  reports: 'Жалобы',
+  users: 'Пользователи',
+  staff: 'Сотрудники',
+  audit: 'Аудит',
+  system: 'Система',
+  security: 'Безопасность',
+};
+
 export function AppShell() {
-  const state = useAsync((signal) => adminService.me(signal), []);
+  const admin = useAdmin();
+  const logout = useAdminLogout();
   const [compact, setCompact] = useState(
     () => localStorage.getItem('admin-sidebar-compact') === 'true',
   );
@@ -36,18 +46,16 @@ export function AppShell() {
 
   const allowedNavigation = useMemo(
     () =>
-      state.data
-        ? navigation.filter(
-            (item) => !item.roles || item.roles.includes(state.data!.role),
-          )
-        : [],
-    [state.data],
+      navigation.filter(
+        (item) => !item.roles || item.roles.includes(admin.role),
+      ),
+    [admin.role],
   );
   const groups = [...new Set(allowedNavigation.map((item) => item.group))];
   const crumbs = location.pathname
     .split('/')
     .filter(Boolean)
-    .map((part) => decodeURIComponent(part).replaceAll('-', ' '));
+    .map((part) => routeLabels[part] ?? part);
 
   function toggleCompact() {
     setCompact((value) => {
@@ -62,22 +70,8 @@ export function AppShell() {
     setSearchOpen(false);
   }
 
-  if (state.loading)
-    return (
-      <main>
-        <LoadingState />
-      </main>
-    );
-  if (state.error || !state.data)
-    return (
-      <main>
-        <ErrorState message={state.error ?? 'Доступ к панели не подтверждён'} />
-      </main>
-    );
-  const admin = state.data;
-
   return (
-    <AdminContext.Provider value={admin}>
+    <>
       <div className={`app-shell ${compact ? 'is-compact' : ''}`}>
         <a className="skip-link" href="#content">
           К содержимому
@@ -104,15 +98,32 @@ export function AppShell() {
                 {allowedNavigation
                   .filter((item) => item.group === group)
                   .map((item) => (
-                    <NavLink
+                    <Link
                       key={item.path}
                       to={item.path}
-                      end={item.path === '/admin'}
+                      className={
+                        isNavigationActive(
+                          item.path,
+                          location.pathname,
+                          location.search,
+                        )
+                          ? 'active'
+                          : undefined
+                      }
+                      aria-current={
+                        isNavigationActive(
+                          item.path,
+                          location.pathname,
+                          location.search,
+                        )
+                          ? 'page'
+                          : undefined
+                      }
                       title={compact ? item.title : undefined}
                     >
                       <Icon name={item.icon} />
                       <span>{item.title}</span>
-                    </NavLink>
+                    </Link>
                   ))}
               </section>
             ))}
@@ -140,12 +151,26 @@ export function AppShell() {
                 <span>Поиск пользователей</span>
                 <kbd>Ctrl K</kbd>
               </button>
+              <button
+                className="button secondary"
+                onClick={() => void logout()}
+              >
+                Выйти
+              </button>
               <div className="account">
                 <div className="account-identity">
                   <Avatar name={admin.name || admin.email} size="sm" />
                   <span>
                     <strong>{admin.name || admin.email}</strong>
-                    <small>{admin.role}</small>
+                    <small>
+                      {
+                        {
+                          MODERATOR: 'Модератор',
+                          ADMIN: 'Администратор',
+                          FULL_ADMIN: 'Полный администратор',
+                        }[admin.role]
+                      }
+                    </small>
                   </span>
                 </div>
               </div>
@@ -184,6 +209,6 @@ export function AppShell() {
           </div>
         )}
       </div>
-    </AdminContext.Provider>
+    </>
   );
 }

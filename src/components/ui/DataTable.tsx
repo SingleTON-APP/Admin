@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { EmptyState } from './Primitives';
 
 export interface Column<T> {
@@ -7,7 +7,6 @@ export interface Column<T> {
   render: (row: T) => ReactNode;
   className?: string;
 }
-
 export function DataTable<T>({
   rows,
   columns,
@@ -15,6 +14,7 @@ export function DataTable<T>({
   selected,
   onSelect,
   onRowClick,
+  rowClassName,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -22,8 +22,15 @@ export function DataTable<T>({
   selected?: Set<string>;
   onSelect?: (id: string) => void;
   onRowClick?: (row: T) => void;
+  rowClassName?: (row: T) => string;
 }) {
   if (!rows.length) return <EmptyState />;
+  const keyboard = (event: KeyboardEvent<HTMLTableRowElement>, row: T) => {
+    if (event.target !== event.currentTarget) return;
+    if (!onRowClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    onRowClick(row);
+  };
   return (
     <div className="table-wrap">
       <table>
@@ -35,7 +42,7 @@ export function DataTable<T>({
               </th>
             )}
             {columns.map((column) => (
-              <th key={column.key} className={column.className}>
+              <th key={column.key} className={column.className} scope="col">
                 {column.header}
               </th>
             ))}
@@ -47,8 +54,20 @@ export function DataTable<T>({
             return (
               <tr
                 key={key}
-                className={onRowClick ? 'clickable-row' : ''}
-                onClick={() => onRowClick?.(row)}
+                className={`${onRowClick ? 'clickable-row' : ''} ${rowClassName?.(row) ?? ''}`}
+                onClick={(event) => {
+                  const target = event.target as Element;
+                  if (
+                    target.closest(
+                      'button, a, input, select, textarea, [role="button"]',
+                    )
+                  )
+                    return;
+                  onRowClick?.(row);
+                }}
+                onKeyDown={(event) => keyboard(event, row)}
+                tabIndex={onRowClick ? 0 : undefined}
+                aria-label={onRowClick ? `Открыть запись ${key}` : undefined}
               >
                 {onSelect && (
                   <td className="check-cell">
@@ -57,7 +76,7 @@ export function DataTable<T>({
                       type="checkbox"
                       checked={selected?.has(key)}
                       onChange={() => onSelect(key)}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
                     />
                   </td>
                 )}
