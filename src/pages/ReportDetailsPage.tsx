@@ -13,6 +13,7 @@ import {
 import { useAdmin } from '../features/admin-access/AdminContext';
 import { useAsync } from '../hooks/useAsync';
 import { adminService } from '../services/admin.service';
+import { reportPriorityLabel, reportTargetLabel } from '../types/report-labels';
 
 export function ReportDetailsPage() {
   const admin = useAdmin();
@@ -30,21 +31,42 @@ export function ReportDetailsPage() {
       admin.role === 'MODERATOR'
         ? Promise.resolve([])
         : adminService.staff(signal),
-    [admin.role],
+    [admin.role, reload],
   );
-  if (state.loading) return <LoadingState />;
+  if (state.loading)
+    return (
+      <>
+        <Link className="button secondary" to={returnTo}>
+          К очереди
+        </Link>
+        <LoadingState />
+      </>
+    );
   if (state.error || !state.data)
-    return <ErrorState message={state.error ?? 'Жалоба не найдена'} />;
+    return (
+      <>
+        <Link className="button secondary" to={returnTo}>
+          К очереди
+        </Link>
+        <ErrorState message={state.error ?? 'Жалоба не найдена'} />
+        <button
+          className="button secondary"
+          onClick={() => setReload((value) => value + 1)}
+        >
+          Повторить загрузку
+        </button>
+      </>
+    );
   const report = state.data;
   return (
     <>
       <PageHeader
-        eyebrow="Moderation workbench"
+        eyebrow="Рабочее место модератора"
         title={`Жалоба ${report.id.slice(0, 8)}`}
-        description={`${report.targetType} · создана ${new Date(report.createdAt).toLocaleString('ru-RU')}`}
+        description={`${reportTargetLabel[report.targetType]} · создана ${new Date(report.createdAt).toLocaleString('ru-RU')}`}
         actions={
           <>
-            <StatusBadge value={report.priority} />
+            <StatusBadge value={reportPriorityLabel[report.priority]} />
             <Link className="button secondary" to={returnTo}>
               К очереди
             </Link>
@@ -104,6 +126,17 @@ export function ReportDetailsPage() {
         />
         <aside className="workbench-right">
           <TargetRiskSummary report={report} />
+          {staffState.error && (
+            <p className="state-error" role="alert">
+              Не удалось загрузить список исполнителей.{' '}
+              <button
+                className="button ghost"
+                onClick={() => setReload((value) => value + 1)}
+              >
+                Повторить
+              </button>
+            </p>
+          )}
           <ActionPanel
             report={report}
             admin={admin}

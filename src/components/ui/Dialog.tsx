@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type FormEvent,
@@ -18,6 +19,7 @@ export function Dialog({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
@@ -25,9 +27,9 @@ export function Dialog({
     if (!open && dialog.open) dialog.close();
   }, [open]);
   return (
-    <dialog ref={ref} onClose={onClose}>
+    <dialog ref={ref} aria-labelledby={titleId} onClose={onClose}>
       <div className="dialog-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button className="icon-button" onClick={onClose} aria-label="Закрыть">
           ×
         </button>

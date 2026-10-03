@@ -23,17 +23,34 @@ export function Avatar({
 }
 
 export function StatusBadge({ value }: { value: string }) {
-  const tone = ['active', 'healthy', 'success', 'resolved', 'online', 'активен', 'решена'].includes(
-    value.toLowerCase(),
-  )
+  const tone = [
+    'active',
+    'healthy',
+    'success',
+    'resolved',
+    'online',
+    'активен',
+    'решена',
+  ].includes(value.toLowerCase())
     ? 'success'
-    : ['banned', 'down', 'critical', 'failed', 'deleted', 'критичный', 'заблокирован'].includes(
-          value.toLowerCase(),
-        )
+    : [
+          'banned',
+          'down',
+          'critical',
+          'failed',
+          'deleted',
+          'критичный',
+          'заблокирован',
+        ].includes(value.toLowerCase())
       ? 'danger'
-      : ['degraded', 'suspended', 'high', 'in review', 'высокий', 'на рассмотрении'].includes(
-            value.toLowerCase(),
-          )
+      : [
+            'degraded',
+            'suspended',
+            'high',
+            'in review',
+            'высокий',
+            'на рассмотрении',
+          ].includes(value.toLowerCase())
         ? 'warning'
         : 'neutral';
   return (
@@ -46,20 +63,31 @@ export function StatusBadge({ value }: { value: string }) {
 
 export function IDDisplay({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const short =
     value.length > 16 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
   return (
     <button
       className="id-display"
-      title={value}
+      title={
+        copyError ? `Не удалось скопировать. Идентификатор: ${value}` : value
+      }
       aria-label={`Скопировать идентификатор ${value}`}
-      onClick={() => {
-        void navigator.clipboard.writeText(value);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1200);
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopyError(false);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1200);
+        } catch {
+          setCopied(false);
+          setCopyError(true);
+        }
       }}
     >
-      <code>{copied ? 'Скопировано' : short}</code>
+      <code aria-live="polite">
+        {copied ? 'Скопировано' : copyError ? value : short}
+      </code>
       <Icon name="copy" size={13} />
     </button>
   );
