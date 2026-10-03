@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { appConfig } from '../../config/app';
-import { navigation } from '../../config/navigation';
+import { isNavigationActive, navigation } from '../../config/navigation';
 import { AdminContext } from '../../features/admin-access/AdminContext';
 import { useAsync } from '../../hooks/useAsync';
 import { adminService } from '../../services/admin.service';
 import { Avatar, ErrorState, LoadingState } from '../ui/Primitives';
 import { Icon } from '../ui/Icon';
+
+const routeLabels: Record<string, string> = {
+  admin: 'Админка',
+  reports: 'Жалобы',
+  users: 'Пользователи',
+  staff: 'Сотрудники',
+  audit: 'Аудит',
+  system: 'Система',
+};
 
 export function AppShell() {
   const state = useAsync((signal) => adminService.me(signal), []);
@@ -47,7 +56,7 @@ export function AppShell() {
   const crumbs = location.pathname
     .split('/')
     .filter(Boolean)
-    .map((part) => decodeURIComponent(part).replaceAll('-', ' '));
+    .map((part) => routeLabels[part] ?? part);
 
   function toggleCompact() {
     setCompact((value) => {
@@ -104,15 +113,32 @@ export function AppShell() {
                 {allowedNavigation
                   .filter((item) => item.group === group)
                   .map((item) => (
-                    <NavLink
+                    <Link
                       key={item.path}
                       to={item.path}
-                      end={item.path === '/admin'}
+                      className={
+                        isNavigationActive(
+                          item.path,
+                          location.pathname,
+                          location.search,
+                        )
+                          ? 'active'
+                          : undefined
+                      }
+                      aria-current={
+                        isNavigationActive(
+                          item.path,
+                          location.pathname,
+                          location.search,
+                        )
+                          ? 'page'
+                          : undefined
+                      }
                       title={compact ? item.title : undefined}
                     >
                       <Icon name={item.icon} />
                       <span>{item.title}</span>
-                    </NavLink>
+                    </Link>
                   ))}
               </section>
             ))}
@@ -145,7 +171,15 @@ export function AppShell() {
                   <Avatar name={admin.name || admin.email} size="sm" />
                   <span>
                     <strong>{admin.name || admin.email}</strong>
-                    <small>{admin.role}</small>
+                    <small>
+                      {
+                        {
+                          MODERATOR: 'Модератор',
+                          ADMIN: 'Администратор',
+                          FULL_ADMIN: 'Полный администратор',
+                        }[admin.role]
+                      }
+                    </small>
                   </span>
                 </div>
               </div>
