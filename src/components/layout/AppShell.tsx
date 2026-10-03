@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { appConfig } from '../../config/app';
 import { isNavigationActive, navigation } from '../../config/navigation';
-import { AdminContext } from '../../features/admin-access/AdminContext';
-import { useAsync } from '../../hooks/useAsync';
-import { adminService } from '../../services/admin.service';
-import { Avatar, ErrorState, LoadingState } from '../ui/Primitives';
+import { useAdmin } from '../../features/admin-access/AdminContext';
+import { useAdminLogout } from '../../features/admin-access/LogoutContext';
+import { Avatar } from '../ui/Primitives';
 import { Icon } from '../ui/Icon';
 
 const routeLabels: Record<string, string> = {
@@ -15,10 +14,12 @@ const routeLabels: Record<string, string> = {
   staff: 'Сотрудники',
   audit: 'Аудит',
   system: 'Система',
+  security: 'Безопасность',
 };
 
 export function AppShell() {
-  const state = useAsync((signal) => adminService.me(signal), []);
+  const admin = useAdmin();
+  const logout = useAdminLogout();
   const [compact, setCompact] = useState(
     () => localStorage.getItem('admin-sidebar-compact') === 'true',
   );
@@ -45,12 +46,10 @@ export function AppShell() {
 
   const allowedNavigation = useMemo(
     () =>
-      state.data
-        ? navigation.filter(
-            (item) => !item.roles || item.roles.includes(state.data!.role),
-          )
-        : [],
-    [state.data],
+      navigation.filter(
+        (item) => !item.roles || item.roles.includes(admin.role),
+      ),
+    [admin.role],
   );
   const groups = [...new Set(allowedNavigation.map((item) => item.group))];
   const crumbs = location.pathname
@@ -71,22 +70,8 @@ export function AppShell() {
     setSearchOpen(false);
   }
 
-  if (state.loading)
-    return (
-      <main>
-        <LoadingState />
-      </main>
-    );
-  if (state.error || !state.data)
-    return (
-      <main>
-        <ErrorState message={state.error ?? 'Доступ к панели не подтверждён'} />
-      </main>
-    );
-  const admin = state.data;
-
   return (
-    <AdminContext.Provider value={admin}>
+    <>
       <div className={`app-shell ${compact ? 'is-compact' : ''}`}>
         <a className="skip-link" href="#content">
           К содержимому
@@ -166,6 +151,12 @@ export function AppShell() {
                 <span>Поиск пользователей</span>
                 <kbd>Ctrl K</kbd>
               </button>
+              <button
+                className="button secondary"
+                onClick={() => void logout()}
+              >
+                Выйти
+              </button>
               <div className="account">
                 <div className="account-identity">
                   <Avatar name={admin.name || admin.email} size="sm" />
@@ -218,6 +209,6 @@ export function AppShell() {
           </div>
         )}
       </div>
-    </AdminContext.Provider>
+    </>
   );
 }
