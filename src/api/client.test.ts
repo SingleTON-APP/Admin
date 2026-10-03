@@ -5,6 +5,17 @@ afterEach(() => {
   setAdminCsrf('');
 });
 describe('Admin CSRF client', () => {
+  it('uses the same-origin API by default instead of the visitor localhost', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetch);
+    await request('/admin/auth/session');
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/admin/auth/session',
+      expect.any(Object),
+    );
+  });
   it('sends CSRF on writes with credential cookie, never persistent storage', async () => {
     const fetch = vi
       .fn()
