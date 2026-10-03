@@ -224,6 +224,7 @@ export function TypeDistribution({
             className="distribution-row"
             key={item.type}
             to={`/admin/reports?targetType=${item.type}`}
+            title="Открыть все жалобы этого типа за всё время"
             aria-label={`${targetLabels[item.type] ?? item.type}: ${number(item.count)} жалоб, ${percentage.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}%`}
           >
             <span>{targetLabels[item.type] ?? item.type}</span>

@@ -103,24 +103,21 @@ export type ModerationAction =
 
 export const adminService = {
   me: (signal?: AbortSignal) => request<StaffIdentity>('/admin/me', { signal }),
-  dashboard: (signal?: AbortSignal) =>
+  dashboard: (signal?: AbortSignal): Promise<Dashboard> =>
     request<RawDashboard>('/admin/dashboard', { signal }).then((value) => ({
       ...value,
       recentActions: value.recentActions.map(auditEvent),
       registrationTrend: value.registrationTrend.map((point) => ({
         date: point.date,
-        count: Number(point.count ?? point.registrations ?? 0),
-        secondary:
-          point.activeUsers === undefined && !value.activityTrend
-            ? undefined
-            : Number(
-                point.activeUsers ??
-                  value.activityTrend?.find(
-                    (activity) =>
-                      activity.date.slice(0, 10) === point.date.slice(0, 10),
-                  )?.activeUsers ??
-                  0,
-              ),
+        count: Number(point.count ?? point.registrations ?? Number.NaN),
+        secondary: (() => {
+          const activity =
+            point.activeUsers ??
+            value.activityTrend?.find(
+              (item) => item.date.slice(0, 10) === point.date.slice(0, 10),
+            )?.activeUsers;
+          return activity === undefined ? undefined : Number(activity);
+        })(),
       })),
     })),
   users: (

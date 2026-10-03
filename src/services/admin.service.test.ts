@@ -6,6 +6,15 @@ vi.mock('../api/client', () => ({ request: vi.fn() }));
 afterEach(() => vi.resetAllMocks());
 
 describe('dashboard contract', () => {
+  it('does not invent zero registrations for an absent count', async () => {
+    vi.mocked(request).mockResolvedValue({
+      recentActions: [],
+      registrationTrend: [{ date: '2026-10-03' }],
+    });
+    expect(
+      (await adminService.dashboard()).registrationTrend[0]?.count,
+    ).toBeNaN();
+  });
   it('joins activity and registration series by calendar date, not position', async () => {
     vi.mocked(request).mockResolvedValue({
       recentActions: [],
@@ -38,5 +47,20 @@ describe('dashboard contract', () => {
     expect(
       (await adminService.dashboard()).registrationTrend[0]?.secondary,
     ).toBeUndefined();
+  });
+  it('keeps an absent activity date distinct from an actual zero', async () => {
+    vi.mocked(request).mockResolvedValue({
+      recentActions: [],
+      registrationTrend: [
+        { date: '2026-09-29', registrations: 3 },
+        { date: '2026-09-30', registrations: 4 },
+      ],
+      activityTrend: [{ date: '2026-09-30', activeUsers: 0 }],
+    });
+    expect(
+      (await adminService.dashboard()).registrationTrend.map(
+        (point) => point.secondary,
+      ),
+    ).toEqual([undefined, 0]);
   });
 });
