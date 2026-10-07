@@ -31,7 +31,18 @@ rollback() {
   fi
   exit 1
 }
-docker load -i admin-image.tar.gz
+image=$(sed -n 's/^ADMIN_IMAGE=//p' admin-release.env)
+[[ "$image" =~ ^deployhubnetwork/admin:(prod|dev)-[a-f0-9]{40}$ ]] || { echo 'Invalid Admin image reference'; exit 1; }
+attempt=1
+until docker pull "$image"; do
+  if (( attempt >= 3 )); then
+    echo "Unable to pull Admin image after $attempt attempts"
+    exit 1
+  fi
+  echo "Admin image pull failed; retrying ($attempt/3)"
+  attempt=$((attempt + 1))
+  sleep 5
+done
 compose up -d --wait --wait-timeout 60 || rollback
 # Verify auth API availability and contract as well as static serving.
 # Root bootstrap readiness is separate and must be provisioned by the operator.

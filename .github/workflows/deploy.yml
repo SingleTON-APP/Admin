@@ -33,6 +33,9 @@ jobs:
       BACKEND_ORIGIN: ${{ vars.ADMIN_BACKEND_ORIGIN || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'http://hub-backend-prod:5555' || 'http://hub-backend-dev:5555') }}
       ADMIN_NETWORK: ${{ vars.ADMIN_DOCKER_NETWORK || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'hub-prod-net' || 'hub-dev-net') }}
       DEPLOY_TIER: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'prod' || 'dev' }}
+      DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+      DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+      IMAGE_REPOSITORY: deployhubnetwork/admin
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,7 +44,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SSH_HOST SSH_PORT SSH_USER SSHPASS SSH_KNOWN_HOSTS ADMIN_HOST_PORT BACKEND_ORIGIN ADMIN_NETWORK; do
+          for name in SSH_HOST SSH_PORT SSH_USER SSHPASS SSH_KNOWN_HOSTS ADMIN_HOST_PORT BACKEND_ORIGIN ADMIN_NETWORK DOCKER_HUB_USERNAME DOCKER_HUB_PASSWORD IMAGE_REPOSITORY; do
             if [[ -z "${!name}" ]]; then echo "::error::Missing $name; configure Admin environment before deployment"; exit 1; fi
           done
           [[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]]
@@ -50,6 +53,8 @@ jobs:
           [[ "$SSH_USER" =~ ^[a-zA-Z0-9_-]+$ && "$SSH_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
           [[ "$ADMIN_NETWORK" =~ ^[a-zA-Z0-9_.-]+$ ]]
           [[ "$BACKEND_ORIGIN" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]{1,5})?$ ]]
+          [[ "$DOCKER_HUB_USERNAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+          [[ "$IMAGE_REPOSITORY" =~ ^[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*$ ]]
       - uses: actions/setup-node@v4
         if: github.event_name == 'workflow_dispatch'
         with:
@@ -62,10 +67,16 @@ jobs:
           npm run lint
           npm run typecheck
           npm test
-      - name: Build the verified frontend image
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+      - name: Build and publish the verified frontend image
         run: |
-          docker build --build-arg VITE_API_URL=/api -t "singleton-admin:$DEPLOY_SHA" .
-          docker save "singleton-admin:$DEPLOY_SHA" | gzip > admin-image.tar.gz
+          image="$IMAGE_REPOSITORY:$DEPLOY_TIER-$DEPLOY_SHA"
+          docker build --build-arg VITE_API_URL=/api -t "$image" .
+          docker push "$image"
       - name: Prepare verified SSH connection
         run: |
           sudo apt-get update
@@ -79,7 +90,8 @@ jobs:
         run: |
           set -euo pipefail
           target="/home/deploy/$DEPLOY_TIER/Hub/Admin"
-          ssh_options=(-o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=20 -o ServerAliveCountMax=6)
+          image="$IMAGE_REPOSITORY:$DEPLOY_TIER-$DEPLOY_SHA"
+          ssh_options=(-o StrictHostKeyChecking=yes -o ConnectTimeout=180 -o ServerAliveInterval=20 -o ServerAliveCountMax=9)
           retry_safe_transfer() {
             local attempt=1
             until "$@"; do
@@ -89,10 +101,14 @@ jobs:
               sleep 5
             done
           }
-          printf 'ADMIN_IMAGE=singleton-admin:%s\nADMIN_HOST_PORT=%s\nBACKEND_ORIGIN=%s\nADMIN_NETWORK=%s\n' "$DEPLOY_SHA" "$ADMIN_HOST_PORT" "$BACKEND_ORIGIN" "$ADMIN_NETWORK" > admin-release.env
+          remote_docker_login() {
+            printf '%s\n' "$DOCKER_HUB_PASSWORD" | sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "docker login --username '$DOCKER_HUB_USERNAME' --password-stdin"
+          }
+          printf 'ADMIN_IMAGE=%s\nADMIN_HOST_PORT=%s\nBACKEND_ORIGIN=%s\nADMIN_NETWORK=%s\n' "$image" "$ADMIN_HOST_PORT" "$BACKEND_ORIGIN" "$ADMIN_NETWORK" > admin-release.env
           retry_safe_transfer sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$target/releases/$DEPLOY_SHA'"
-          retry_safe_transfer sshpass -e scp "${ssh_options[@]}" -P "$SSH_PORT" admin-image.tar.gz admin-release.env docker-compose.yml scripts/deploy-admin.sh "$SSH_USER@$SSH_HOST:$target/releases/$DEPLOY_SHA/"
-          sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "bash '$target/releases/$DEPLOY_SHA/deploy-admin.sh' '$target' '$DEPLOY_SHA' 'singleton-admin-$DEPLOY_TIER'"
+          retry_safe_transfer sshpass -e scp "${ssh_options[@]}" -P "$SSH_PORT" admin-release.env docker-compose.yml scripts/deploy-admin.sh "$SSH_USER@$SSH_HOST:$target/releases/$DEPLOY_SHA/"
+          retry_safe_transfer remote_docker_login
+          retry_safe_transfer sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "bash '$target/releases/$DEPLOY_SHA/deploy-admin.sh' '$target' '$DEPLOY_SHA' 'singleton-admin-$DEPLOY_TIER'"
       - name: Remove transfer files
         if: always()
-        run: rm -f admin-image.tar.gz admin-release.env
+        run: rm -f admin-release.env

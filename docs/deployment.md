@@ -34,16 +34,19 @@ Required environment secrets, matching the Hub-core naming scheme:
 the trusted server's known_hosts entry, obtained and verified by the operator;
 the workflow never silently trusts ssh-keyscan. Repository/org secrets must
 actually grant Admin access; credentials from another repository are not copied.
+`DOCKER_HUB_USERNAME` and `DOCKER_HUB_PASSWORD` are repository secrets used to
+publish and pull the immutable `deployhubnetwork/admin:<tier>-<commit>` image.
 Missing configuration fails before remote writes. No real secrets are committed.
 
-Server requirements: Docker with compose plugin supporting --wait, gzip, curl,
+Server requirements: Docker with compose plugin supporting --wait, curl,
 python3, flock and ss, SSH access, the selected external network. Each release goes
 into `/home/deploy/{prod|dev}/Hub/Admin/releases/<sha>` and uses compose project
-`singleton-admin-{prod|dev}`. The runner transfers a Docker image over SSH;
-no Docker registry credential is required. Static and real admin session API
-health must pass before activation. Failure restores the previous release
-(or removes the first failed Admin container). Release/current pointer updates
-only on success. No other application's container is removed.
+`singleton-admin-{prod|dev}`. The runner publishes an immutable Docker Hub image,
+transfers only the release metadata and scripts, logs the server into Docker Hub,
+and the server pulls the image with retries. Static and real admin session API
+health must pass before activation. Failure restores the previous release (or
+removes the first failed Admin container). Release/current pointer updates only
+on success. No other application's container is removed.
 
 The server's public HTTPS virtual host must forward to the selected local Admin
 port. The container serves /admin and other React routes with SPA fallback;
@@ -57,13 +60,10 @@ proxy IPs explicitly for IP lockout. Run the one-time root bootstrap separately,
 using secret files. The frontend deployment never creates or resets accounts,
 never injects passwords into VITE_ variables and never bypasses auth guards.
 
-This change creates the pipeline; it does not configure repository secrets,
-DNS/public nginx or initialize a production database. The requested production
-site is admin.hub-net.org. Its existing HTTPS virtual host must proxy all Admin
-routes to http://127.0.0.1:12228 (or the overridden port). Preserve the existing
-TLS certificate settings. A production release also checks the public auth API
-route; an unhealthy public route triggers rollback. The observed site returned
-502 Connection refused before deployment, not a React render error.
+The requested production site is admin.hub-net.org. Its HTTPS virtual host must
+proxy Admin routes to http://127.0.0.1:12228 (or the overridden port) while
+preserving the existing TLS certificate settings. A production release also
+checks the public auth API route; an unhealthy public route triggers rollback.
 
 The production host configuration is versioned at
 `nginx/admin.hub-net.org.conf`. It preserves the existing `10.100.0.0/24`
