@@ -65,6 +65,11 @@ TLS certificate settings. A production release also checks the public auth API
 route; an unhealthy public route triggers rollback. The observed site returned
 502 Connection refused before deployment, not a React render error.
 
+The production host configuration is versioned at
+`nginx/admin.hub-net.org.conf`. It preserves the existing `10.100.0.0/24`
+allowlist for both the HTTPS hostname and the VPN address while forwarding the
+entire same-origin application to the Admin container on `127.0.0.1:12228`.
+
 ## Local development
 
 VITE_API_URL defaults to /api; Vite forwards /api to http://localhost:11001.
