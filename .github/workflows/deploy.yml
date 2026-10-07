@@ -79,10 +79,20 @@ jobs:
         run: |
           set -euo pipefail
           target="/home/deploy/$DEPLOY_TIER/Hub/Admin"
+          ssh_options=(-o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=20 -o ServerAliveCountMax=6)
+          retry_safe_transfer() {
+            local attempt=1
+            until "$@"; do
+              if (( attempt >= 3 )); then return 1; fi
+              echo "Safe SSH transfer failed; retrying ($attempt/3)"
+              attempt=$((attempt + 1))
+              sleep 5
+            done
+          }
           printf 'ADMIN_IMAGE=singleton-admin:%s\nADMIN_HOST_PORT=%s\nBACKEND_ORIGIN=%s\nADMIN_NETWORK=%s\n' "$DEPLOY_SHA" "$ADMIN_HOST_PORT" "$BACKEND_ORIGIN" "$ADMIN_NETWORK" > admin-release.env
-          sshpass -e ssh -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$target/releases/$DEPLOY_SHA'"
-          sshpass -e scp -o StrictHostKeyChecking=yes -P "$SSH_PORT" admin-image.tar.gz admin-release.env docker-compose.yml scripts/deploy-admin.sh "$SSH_USER@$SSH_HOST:$target/releases/$DEPLOY_SHA/"
-          sshpass -e ssh -o StrictHostKeyChecking=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "bash '$target/releases/$DEPLOY_SHA/deploy-admin.sh' '$target' '$DEPLOY_SHA' 'singleton-admin-$DEPLOY_TIER'"
+          retry_safe_transfer sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$target/releases/$DEPLOY_SHA'"
+          retry_safe_transfer sshpass -e scp "${ssh_options[@]}" -P "$SSH_PORT" admin-image.tar.gz admin-release.env docker-compose.yml scripts/deploy-admin.sh "$SSH_USER@$SSH_HOST:$target/releases/$DEPLOY_SHA/"
+          sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "bash '$target/releases/$DEPLOY_SHA/deploy-admin.sh' '$target' '$DEPLOY_SHA' 'singleton-admin-$DEPLOY_TIER'"
       - name: Remove transfer files
         if: always()
         run: rm -f admin-image.tar.gz admin-release.env

@@ -68,7 +68,9 @@ route; an unhealthy public route triggers rollback. The observed site returned
 The production host configuration is versioned at
 `nginx/admin.hub-net.org.conf`. It preserves the existing `10.100.0.0/24`
 allowlist for both the HTTPS hostname and the VPN address while forwarding the
-entire same-origin application to the Admin container on `127.0.0.1:12228`.
+frontend to the Admin container on `127.0.0.1:12228`. `/api/*` is forwarded
+directly to production Back-Hub on `127.0.0.1:12001`, so backend IP lockout sees
+the host nginx proxy instead of a replaceable Admin container address.
 
 ## Local development
 
