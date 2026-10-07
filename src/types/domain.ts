@@ -3,7 +3,7 @@ export type UserRole = 'USER' | StaffRole;
 export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'DELETED';
 export type ReportStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
 export type ReportPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-export type ReportTargetType = 'USER' | 'MESSAGE' | 'CHAT' | 'POST' | 'COMMENT' | 'MEDIA';
+export type ReportTargetType = 'USER' | 'MESSAGE' | 'CHAT' | 'POST' | 'COMMENT' | 'MEDIA' | 'SUPPORT';
 export type ContextLevel = 'REPORTED_ONLY' | 'NEARBY' | 'EXTENDED';
 
 export interface StaffIdentity { id: string; publicId: string; name: string; email: string; role: StaffRole; }
@@ -62,6 +62,8 @@ export interface ModerationAttachment {
   kind?: string; messageType?: string; mediaRef: string; previewAvailable: boolean; mimeType?: string | null;
   fileName?: string | null; size?: number | null; width?: number | null; height?: number | null;
   durationSeconds?: number | null;
+  /** Только у обращений в поддержку: файл, приложенный пользователем (API-путь). */
+  previewPath?: string | null;
 }
 export interface ModerationMessage {
   id: string; text?: string | null; contentUnavailableReason?: string | null; author?: ModerationAuthor | null;

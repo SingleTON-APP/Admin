@@ -18,4 +18,5 @@ export const reportTargetLabel: Record<ReportTargetType, string> = {
   POST: 'Пост',
   COMMENT: 'Комментарий',
   MEDIA: 'Медиа',
+  SUPPORT: 'Поддержка',
 };
