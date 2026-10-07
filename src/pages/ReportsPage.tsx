@@ -8,6 +8,7 @@ import {
   reportPriorityLabel as priorityLabel,
   reportStatusLabel,
   reportTargetLabel as targetLabel,
+  reportCategoryLabel,
 } from '../types/report-labels';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueueFilters } from '../components/moderation/QueueFilters';
@@ -106,7 +107,7 @@ export function ReportsPage() {
       header: 'Категория',
       render: (report) => (
         <span className="stack-cell">
-          <strong>{report.category}</strong>
+          <strong>{reportCategoryLabel(report.category)}</strong>
           <small className="truncate">{report.reason}</small>
         </span>
       ),
