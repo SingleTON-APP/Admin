@@ -233,6 +233,9 @@ export const adminService = {
       `/admin/reports/${id}/priority`,
       json('PATCH', { priority }),
     ).then(reportDetails),
+  /** Ответ на обращение в поддержку — приходит пользователю в чат «Hub». */
+  replySupport: (id: string, text: string) =>
+    request<{ ok: boolean }>(`/admin/reports/${id}/reply`, json('POST', { text })),
   addReportNote: (id: string, body: string) =>
     request<RawNote>(`/admin/reports/${id}/notes`, json('POST', { body })),
   moderateReportTarget: (

@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { requestBlob } from '../../api/client';
 import { adminService } from '../../services/admin.service';
 import type {
   ContextLevel,
@@ -102,9 +103,48 @@ export function ContextLevelSwitcher({
     </>
   );
 }
+/** Файл из обращения в поддержку: пользователь приложил его сам. */
+function useSupportPreview(path: string | null | undefined) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!path) return;
+    const controller = new AbortController();
+    let objectUrl = '';
+    requestBlob(path, controller.signal)
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [path]);
+  return url;
+}
 function Attachment({ value }: { value: ModerationAttachment }) {
+  const previewUrl = useSupportPreview(value.previewPath);
   return (
     <div className="attachment">
+      {previewUrl &&
+        (value.kind === 'image' ? (
+          <a href={previewUrl} target="_blank" rel="noreferrer">
+            <img
+              className="support-preview"
+              src={previewUrl}
+              alt="Вложение к обращению"
+            />
+          </a>
+        ) : (
+          <a
+            className="button secondary"
+            href={previewUrl}
+            download={value.fileName ?? 'attachment'}
+          >
+            Открыть файл
+          </a>
+        ))}
       <span>
         <strong>{value.messageType || value.kind || 'Вложение'}</strong>
         <small>

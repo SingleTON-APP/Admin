@@ -11,6 +11,20 @@ export function setAdminCsrf(token: string) {
 }
 export const ADMIN_ACCESS_EXPIRED = 'admin-access-expired';
 
+/** Файл с API (cookie-сессия), например скриншот из обращения в поддержку. */
+export async function requestBlob(
+  path: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}/${path.replace(/^\//, '')}`, {
+    credentials: 'include',
+    signal,
+  });
+  if (!response.ok)
+    throw new ApiError(response.status, `HTTP ${response.status}`);
+  return response.blob();
+}
+
 export async function request<T>(
   path: string,
   init: RequestInit = {},
