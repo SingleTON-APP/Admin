@@ -11,11 +11,66 @@ export function setAdminCsrf(token: string) {
 }
 export const ADMIN_ACCESS_EXPIRED = 'admin-access-expired';
 
+function delay(ms: number, signal?: AbortSignal | null) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', abort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', abort, { once: true });
+  });
+}
+
+async function resilientFetch(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  const read = ['GET', 'HEAD'].includes((init.method || 'GET').toUpperCase());
+  const attempts = read ? 3 : 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    if (attempt) await delay(attempt * 750, init.signal);
+    const controller = new AbortController();
+    const abort = () => controller.abort(init.signal?.reason);
+    if (init.signal?.aborted) abort();
+    init.signal?.addEventListener('abort', abort, { once: true });
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal });
+      if (
+        read &&
+        [502, 503, 504].includes(response.status) &&
+        attempt < attempts - 1
+      )
+        continue;
+      return response;
+    } catch (error) {
+      if (init.signal?.aborted) throw error;
+      if (attempt === attempts - 1)
+        throw new Error(
+          'Нет связи с сервером. Проверьте подключение и повторите загрузку.',
+          { cause: error },
+        );
+    } finally {
+      clearTimeout(timer);
+      init.signal?.removeEventListener('abort', abort);
+    }
+  }
+  throw new Error('Не удалось получить ответ сервера');
+}
+
 export async function request<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await resilientFetch(`${API_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: {

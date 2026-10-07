@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import {
   TrendChart,
   TypeDistribution,
-  SystemBadge,
 } from '../components/dashboard/DashboardWidgets';
 import {
   DashboardMetrics,
@@ -142,27 +141,6 @@ export function DashboardPage() {
               events={data.recentActions}
               canOpenAudit={manager}
             />
-            <section className="card dashboard-panel system-compact">
-              <div className="card-head">
-                <div>
-                  <span className="section-label">На момент снимка</span>
-                  <h2>Состояние системы</h2>
-                </div>
-                {manager && <Link to="/admin/system">Подробнее</Link>}
-              </div>
-              <SystemBadge name="Back-Hub API" value={data.systemStatus.api} />
-              <SystemBadge
-                name="PostgreSQL"
-                value={data.systemStatus.database}
-              />
-              <SystemBadge
-                name="Post-service"
-                value={data.systemStatus.posts}
-              />
-              <p className="data-note">
-                Состояние проверяется при каждом обновлении dashboard.
-              </p>
-            </section>
           </div>
           <UsagePanel days={period} />
         </>

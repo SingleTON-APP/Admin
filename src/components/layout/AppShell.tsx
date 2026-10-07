@@ -6,6 +6,8 @@ import { useAdmin } from '../../features/admin-access/AdminContext';
 import { useAdminLogout } from '../../features/admin-access/LogoutContext';
 import { Avatar } from '../ui/Primitives';
 import { Icon } from '../ui/Icon';
+import { SidebarHealth } from './SidebarHealth';
+import '../../styles/monitor.css';
 
 const routeLabels: Record<string, string> = {
   admin: 'Админка',
@@ -15,6 +17,7 @@ const routeLabels: Record<string, string> = {
   audit: 'Аудит',
   system: 'Система',
   security: 'Безопасность',
+  monitor: 'Мониторинг',
 };
 
 export function AppShell() {
@@ -128,10 +131,7 @@ export function AppShell() {
               </section>
             ))}
           </nav>
-          <div className="environment">
-            <i />
-            Production
-          </div>
+          <SidebarHealth />
         </aside>
         <div className="workspace">
           <header className="topbar">

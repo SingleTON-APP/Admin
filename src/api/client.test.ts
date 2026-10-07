@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ADMIN_ACCESS_EXPIRED, request, setAdminCsrf } from './client';
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
   setAdminCsrf('');
 });
 describe('Admin CSRF client', () => {
@@ -82,4 +83,40 @@ describe('Admin CSRF client', () => {
       }
     },
   );
+});
+
+describe('temporary connection failures', () => {
+  it('retries a read after a network failure', async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('NetworkError'))
+      .mockResolvedValue(new Response('{"ok":true}'));
+    vi.stubGlobal('fetch', fetch);
+    const result = request('/admin/dashboard');
+    await vi.advanceTimersByTimeAsync(750);
+    await expect(result).resolves.toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+  it('does not repeat a write when its outcome is unknown', async () => {
+    const fetch = vi.fn().mockRejectedValue(new TypeError('NetworkError'));
+    vi.stubGlobal('fetch', fetch);
+    await expect(
+      request('/admin/reports/id/take', { method: 'POST' }),
+    ).rejects.toThrow('Нет связи с сервером');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it('cancels a retry immediately when the page request is aborted', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockRejectedValue(new TypeError('NetworkError'));
+    vi.stubGlobal('fetch', fetch);
+    const controller = new AbortController();
+    const result = request('/admin/dashboard', { signal: controller.signal });
+    const assertion = expect(result).rejects.toBeDefined();
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort();
+    await assertion;
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
 });
