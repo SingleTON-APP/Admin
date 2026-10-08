@@ -39,8 +39,16 @@ export function ReportSummary({ report }: { report: Report }) {
         <span>
           Заявитель:{' '}
           {report.reporter ? (
-            <Link to={`/admin/users/${report.reporter.publicId}`}>
-              @{report.reporter.username}
+            <Link
+              to={`/admin/users/${encodeURIComponent(report.reporter.publicId)}`}
+            >
+              {report.reporter.username
+                ? `@${report.reporter.username}`
+                : [report.reporter.firstName, report.reporter.lastName]
+                    .filter(Boolean)
+                    .join(' ') ||
+                  report.reporter.publicId ||
+                  'Пользователь'}
             </Link>
           ) : (
             'пользователь удалён'
