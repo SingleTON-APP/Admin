@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { usePolling } from '../hooks/usePolling';
 import { adminService } from '../services/admin.service';
-import { usageService, type UsageSummary } from '../services/usage.service';
+import { usageService } from '../services/usage.service';
 import {
   TrendChart,
   TypeDistribution,
@@ -71,134 +71,120 @@ function MonitorBoard({
 }: ReturnType<typeof readSettings> & {
   move: (id: Tile, direction: number) => void;
 }) {
-  const load = useCallback(
-    async (signal: AbortSignal) => {
-      const [dashboard, usage] = await Promise.all([
-        adminService.dashboard(signal),
-        usageService
-          .summary(days, signal)
-          .then((data) => ({ data, error: undefined as string | undefined }))
-          .catch((error: unknown) => ({
-            data: undefined as UsageSummary | undefined,
-            error:
-              error instanceof Error ? error.message : 'Измерения недоступны',
-          })),
-      ]);
-      return { dashboard, usage };
-    },
+  const loadUsage = useCallback(
+    (signal: AbortSignal) => usageService.summary(days, signal),
     [days],
   );
-  const state = usePolling(load, seconds * 1000);
-  const data = state.data?.dashboard;
-  const usage = state.data?.usage;
+  const dashboard = usePolling(adminService.dashboard, seconds * 1000);
+  const usage = usePolling(loadUsage, seconds * 1000);
+  const data = dashboard.data;
+  const loading = dashboard.loading || usage.loading;
+  const stale = !!(dashboard.error || usage.error);
+  const hasSnapshot = !!(dashboard.updatedAt || usage.updatedAt);
   return (
     <>
       <div className="monitor-status" role="status">
         <span
-          className={`monitor-indicator ${state.error ? 'is-stale' : ''}`}
+          className={`monitor-indicator ${stale ? 'is-stale' : !hasSnapshot ? 'is-unknown' : ''}`}
         />
         <strong>
-          {state.error
-            ? 'Нет связи с сервером'
-            : state.loading
+          {stale
+            ? 'Часть данных не обновлена'
+            : loading
               ? 'Обновление…'
               : seconds
                 ? 'Автообновление включено'
                 : 'Ручное обновление'}
         </strong>
-        <span>
-          {state.updatedAt
-            ? `Последний снимок: ${new Date(state.updatedAt).toLocaleTimeString('ru-RU')}`
-            : 'Получаем первый снимок'}
-        </span>
-        {state.error && (
-          <span>Показаны последние полученные данные. {state.error}</span>
-        )}
         <button
           className="button secondary"
-          onClick={state.refresh}
-          disabled={state.loading}
+          onClick={() => {
+            dashboard.refresh();
+            usage.refresh();
+          }}
+          disabled={loading}
         >
           Обновить сейчас
         </button>
       </div>
-      {!data ? (
-        <section className="card">
-          <p>{state.error || 'Загрузка показателей…'}</p>
-        </section>
-      ) : (
-        <div
-          className={`monitor-grid ${compact ? 'monitor-dense' : ''}`}
-          style={{ '--monitor-columns': columns } as CSSProperties}
-        >
-          {order
-            .filter((id) => visible.includes(id))
-            .map((id) => (
-              <section key={id} className={`monitor-tile monitor-tile-${id}`}>
-                <div className="monitor-tile-head">
-                  <h2>{tiles.find(([key]) => key === id)?.[1]}</h2>
-                  <div className="monitor-tile-controls">
-                    <button
-                      type="button"
-                      aria-label={`Переместить выше: ${tiles.find(([key]) => key === id)?.[1]}`}
-                      disabled={order.indexOf(id) === 0}
-                      onClick={() => move(id, -1)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Переместить ниже: ${tiles.find(([key]) => key === id)?.[1]}`}
-                      disabled={order.indexOf(id) === order.length - 1}
-                      onClick={() => move(id, 1)}
-                    >
-                      ↓
-                    </button>
-                  </div>
+      <div className="monitor-freshness" aria-live="polite">
+        <ResourceFreshness label="Показатели и графики" state={dashboard} />
+        <ResourceFreshness label="Время использования" state={usage} />
+      </div>
+      <div
+        className={`monitor-grid ${compact ? 'monitor-dense' : ''}`}
+        style={{ '--monitor-columns': columns } as CSSProperties}
+      >
+        {order
+          .filter((id) => visible.includes(id))
+          .map((id) => (
+            <section key={id} className={`monitor-tile monitor-tile-${id}`}>
+              <div className="monitor-tile-head">
+                <h2>{tiles.find(([key]) => key === id)?.[1]}</h2>
+                <div className="monitor-tile-controls">
+                  <button
+                    type="button"
+                    aria-label={`Переместить выше: ${tiles.find(([key]) => key === id)?.[1]}`}
+                    disabled={order.indexOf(id) === 0}
+                    onClick={() => move(id, -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Переместить ниже: ${tiles.find(([key]) => key === id)?.[1]}`}
+                    disabled={order.indexOf(id) === order.length - 1}
+                    onClick={() => move(id, 1)}
+                  >
+                    ↓
+                  </button>
                 </div>
-                {id === 'metrics' && (
-                  <DashboardMetrics metrics={data.metrics} />
-                )}
-                {id === 'registrations' && (
-                  <>
-                    <p className="data-note">
-                      Последние {days} дней · UTC. Активность — авторы
-                      сообщений, а не посещения админки.
-                    </p>
-                    <TrendChart
-                      points={data.registrationTrend.slice(-days)}
-                      label="Регистрации"
-                      secondaryLabel="Авторы сообщений"
-                    />
-                  </>
-                )}
-                {id === 'reports' && (
-                  <>
-                    <p className="data-note">
-                      Созданные жалобы за последние {days} дней · UTC
-                    </p>
-                    <TrendChart
-                      points={data.reportTrend.slice(-days)}
-                      label="Жалобы"
-                    />
-                  </>
-                )}
-                {id === 'queue' && <QueueAgePanel queue={data.queueAge} />}
-                {id === 'types' && (
-                  <TypeDistribution items={data.reportsByType} />
-                )}
-                {id === 'usage' &&
-                  (usage?.error ? (
-                    <p role="alert">
-                      Время использования недоступно: {usage.error}
-                    </p>
-                  ) : (
-                    <UsagePanel days={days} snapshot={usage?.data} />
-                  ))}
-              </section>
-            ))}
-        </div>
-      )}
+              </div>
+              {id !== 'usage' && !data && (
+                <p>{dashboard.error || 'Загрузка показателей…'}</p>
+              )}
+              {id === 'metrics' && data && (
+                <DashboardMetrics metrics={data.metrics} />
+              )}
+              {id === 'registrations' && data && (
+                <>
+                  <p className="data-note">
+                    Последние {days} дней · UTC. Активность — авторы сообщений,
+                    а не посещения админки.
+                  </p>
+                  <TrendChart
+                    points={data.registrationTrend.slice(-days)}
+                    label="Регистрации"
+                    secondaryLabel="Авторы сообщений"
+                  />
+                </>
+              )}
+              {id === 'reports' && data && (
+                <>
+                  <p className="data-note">
+                    Созданные жалобы за последние {days} дней · UTC
+                  </p>
+                  <TrendChart
+                    points={data.reportTrend.slice(-days)}
+                    label="Жалобы"
+                  />
+                </>
+              )}
+              {id === 'queue' && data && (
+                <QueueAgePanel queue={data.queueAge} />
+              )}
+              {id === 'types' && data && (
+                <TypeDistribution items={data.reportsByType} />
+              )}
+              {id === 'usage' &&
+                (usage.data ? (
+                  <UsagePanel days={days} snapshot={usage.data} />
+                ) : (
+                  <p>{usage.error || 'Загрузка времени использования…'}</p>
+                ))}
+            </section>
+          ))}
+      </div>
       {visible.length === 0 && (
         <p className="dashboard-notice">
           Выберите хотя бы одну плитку в настройках.
@@ -208,21 +194,52 @@ function MonitorBoard({
   );
 }
 
+function ResourceFreshness({
+  label,
+  state,
+}: {
+  label: string;
+  state: { updatedAt?: number; error?: string; loading: boolean };
+}) {
+  return (
+    <p className={state.error ? 'health-stale' : ''}>
+      <strong>{label}:</strong>{' '}
+      {state.updatedAt
+        ? `последнее успешное обновление ${new Date(state.updatedAt).toLocaleTimeString('ru-RU')}`
+        : 'успешных обновлений пока нет'}
+      {state.error
+        ? ` · ${state.updatedAt ? 'показаны устаревшие данные' : 'данные недоступны'}. ${state.error}`
+        : state.loading
+          ? ' · обновление…'
+          : ''}
+    </p>
+  );
+}
+
 export function MonitorPage() {
   const [settings, setSettings] = useState(readSettings);
   const [wall, setWall] = useState(false);
   useEffect(() => {
-    localStorage.setItem('admin-monitor-settings', JSON.stringify(settings));
+    try {
+      localStorage.setItem('admin-monitor-settings', JSON.stringify(settings));
+    } catch {
+      // Storage can be disabled; settings still work for the current session.
+    }
   }, [settings]);
   useEffect(() => {
     document.documentElement.classList.toggle('monitor-wall-mode', wall);
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setWall(false);
     };
+    const fullscreen = () => {
+      if (!document.fullscreenElement) setWall(false);
+    };
     window.addEventListener('keydown', escape);
+    document.addEventListener('fullscreenchange', fullscreen);
     return () => {
       document.documentElement.classList.remove('monitor-wall-mode');
       window.removeEventListener('keydown', escape);
+      document.removeEventListener('fullscreenchange', fullscreen);
     };
   }, [wall]);
   const toggleWall = async () => {

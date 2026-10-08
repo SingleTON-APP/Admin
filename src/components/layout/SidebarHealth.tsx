@@ -6,8 +6,12 @@ import { SystemBadge } from '../dashboard/DashboardWidgets';
 const intervals = [5, 15, 30, 60, 120, 300];
 export function SidebarHealth() {
   const [seconds, setSeconds] = useState(() => {
-    const saved = Number(localStorage.getItem('admin-health-interval'));
-    return intervals.includes(saved) ? saved : 30;
+    try {
+      const saved = Number(localStorage.getItem('admin-health-interval'));
+      return intervals.includes(saved) ? saved : 30;
+    } catch {
+      return 30;
+    }
   });
   const state = usePolling(healthService.snapshot, seconds * 1000);
   const unknown = { status: 'UNKNOWN' as const };
@@ -22,7 +26,11 @@ export function SidebarHealth() {
           onChange={(event) => {
             const value = Number(event.target.value);
             setSeconds(value);
-            localStorage.setItem('admin-health-interval', String(value));
+            try {
+              localStorage.setItem('admin-health-interval', String(value));
+            } catch {
+              // Keep the selected interval even when storage is disabled.
+            }
           }}
         >
           {intervals.map((value) => (
@@ -32,15 +40,27 @@ export function SidebarHealth() {
           ))}
         </select>
       </div>
-      <div className="sidebar-health-services" aria-busy={state.loading}>
+      <div
+        className={`sidebar-health-services ${state.error ? 'health-services-stale' : ''}`}
+        aria-busy={state.loading}
+      >
         <SystemBadge name="Back-Hub API" value={services?.api ?? unknown} />
         <SystemBadge name="PostgreSQL" value={services?.database ?? unknown} />
         <SystemBadge name="Post-service" value={services?.posts ?? unknown} />
       </div>
+      {state.error && (
+        <p className="health-stale health-freshness" role="status">
+          {state.updatedAt
+            ? 'Статусы устарели: связь для проверки недоступна.'
+            : 'Не удалось проверить сервисы.'}
+        </p>
+      )}
       <div className="sidebar-health-footer">
         <span className={state.error ? 'health-stale' : ''} title={state.error}>
           {state.error
-            ? 'Нет связи · данные устарели'
+            ? state.updatedAt
+              ? `Последняя проверка ${new Date(state.updatedAt).toLocaleTimeString('ru-RU')}`
+              : 'Успешных проверок пока нет'
             : state.updatedAt
               ? `Обновлено ${new Date(state.updatedAt).toLocaleTimeString('ru-RU')}`
               : 'Проверяем сервисы…'}

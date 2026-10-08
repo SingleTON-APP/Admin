@@ -1,24 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Schedule after completion: slow requests never overlap or discard the last snapshot. */
 export function usePolling<T>(
   load: (signal: AbortSignal) => Promise<T>,
   intervalMs: number,
 ) {
-  const [revision, setRevision] = useState(0);
+  const requestRefresh = useRef<() => void>(() => {});
   const [state, setState] = useState<{
     data?: T;
     error?: string;
     loading: boolean;
     updatedAt?: number;
   }>({ loading: true });
-  const refresh = useCallback(() => setRevision((value) => value + 1), []);
+  const refresh = useCallback(() => requestRefresh.current(), []);
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let running = false;
     const run = async () => {
       if (running || controller.signal.aborted) return;
+      clearTimeout(timer);
       running = true;
       setState((previous) => ({ ...previous, loading: true }));
       try {
@@ -37,21 +38,32 @@ export function usePolling<T>(
           }));
       } finally {
         running = false;
-        if (intervalMs > 0 && !controller.signal.aborted)
+        if (
+          intervalMs > 0 &&
+          !controller.signal.aborted &&
+          document.visibilityState === 'visible'
+        )
           timer = setTimeout(() => void run(), intervalMs);
       }
     };
-    const online = () => {
-      clearTimeout(timer);
-      void run();
+    const resume = () => {
+      if (intervalMs > 0 && document.visibilityState === 'visible') void run();
     };
-    window.addEventListener('online', online);
-    void run();
+    const visibility = () => {
+      if (document.visibilityState === 'hidden') clearTimeout(timer);
+      else resume();
+    };
+    requestRefresh.current = () => void run();
+    window.addEventListener('online', resume);
+    document.addEventListener('visibilitychange', visibility);
+    if (intervalMs === 0 || document.visibilityState === 'visible') void run();
     return () => {
       controller.abort();
       clearTimeout(timer);
-      window.removeEventListener('online', online);
+      requestRefresh.current = () => {};
+      window.removeEventListener('online', resume);
+      document.removeEventListener('visibilitychange', visibility);
     };
-  }, [load, intervalMs, revision]);
+  }, [load, intervalMs]);
   return { ...state, refresh };
 }

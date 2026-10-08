@@ -57,6 +57,62 @@ jobs:
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/assets/missing.js)" = 404
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/api/admin/auth/session)" = 502
           curl --fail --silent --head http://127.0.0.1:18080/admin | grep --ignore-case 'cache-control: no-store'
+      - name: Proxy follows backend container replacement
+        run: |
+          set -eu
+          network=admin-ci-dns
+          cleanup() {
+            docker logs admin-ci-dns 2>/dev/null || true
+            docker logs admin-ci-backend 2>/dev/null || true
+            docker rm --force admin-ci-dns admin-ci-backend 2>/dev/null || true
+            docker network rm "$network" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          cat > "$RUNNER_TEMP/admin-ci-backend.py" <<'PY'
+          import os
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+
+          class Handler(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  body = (os.environ["INSTANCE"] + " " + self.path).encode()
+                  self.send_response(200)
+                  self.send_header("Content-Length", str(len(body)))
+                  self.end_headers()
+                  self.wfile.write(body)
+
+          HTTPServer(("0.0.0.0", 5555), Handler).serve_forever()
+          PY
+          docker network create --subnet 172.30.241.0/24 "$network"
+          start_backend() {
+            docker run --detach --name admin-ci-backend --network "$network" --ip "$1" \
+              --env INSTANCE="$2" \
+              --mount "type=bind,source=$RUNNER_TEMP/admin-ci-backend.py,target=/backend.py,readonly" \
+              python:3.13-alpine python /backend.py
+          }
+          start_backend 172.30.241.10 first
+          docker run --detach --name admin-ci-dns --network "$network" \
+            --env BACKEND_ORIGIN=http://admin-ci-backend:5555 \
+            --publish 127.0.0.1:18081:8080 singleton-admin:ci
+          uri='/api/admin/auth/session?probe=one%20two&next=%2Fadmin'
+          expect_response() {
+            expected="$1 $uri"
+            for attempt in $(seq 1 30); do
+              actual=$(curl --silent --max-time 2 "http://127.0.0.1:18081$uri" || true)
+              if [ "$actual" = "$expected" ]; then
+                return 0
+              fi
+              sleep 1
+            done
+            printf 'Expected "%s", received "%s"\n' "$expected" "$actual" >&2
+            return 1
+          }
+          expect_response first
+          started_at=$(docker inspect --format '{{.State.StartedAt}}' admin-ci-dns)
+          docker rm --force admin-ci-backend
+          start_backend 172.30.241.11 second
+          expect_response second
+          test "$(docker inspect --format '{{.State.StartedAt}}' admin-ci-dns)" = "$started_at"
+          test "$(docker inspect --format '{{.RestartCount}}' admin-ci-dns)" = 0
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

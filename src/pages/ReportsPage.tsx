@@ -13,7 +13,7 @@ import {
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { QueueFilters } from '../components/moderation/QueueFilters';
 import type { Report } from '../types/domain';
-import { useAsync } from '../hooks/useAsync';
+import { useRefreshingQuery } from '../hooks/useRefreshingQuery';
 import { adminService } from '../services/admin.service';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import {
@@ -45,18 +45,14 @@ export function ReportsPage() {
   const query = queueQuery(params);
   const page = query.page;
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [lastSuccess, setLastSuccess] = useState<number | null>(null);
   const refresh = useCallback(() => setReload((value) => value + 1), []);
   useEffect(() => {
     if (signature !== rawSignature) setParams(signature, { replace: true });
   }, [signature, rawSignature, setParams]);
-  const state = useAsync(
-    async (signal) => {
-      const result = await adminService.reports({ ...query, signal });
-      if (!signal.aborted) setLastSuccess(Date.now());
-      return result;
-    },
-    [signature, reload],
+  const state = useRefreshingQuery(
+    (signal) => adminService.reports({ ...query, signal }),
+    signature,
+    reload,
   );
   useQueueAutoRefresh(autoRefresh, state.loading, refresh);
 
@@ -179,8 +175,8 @@ export function ReportsPage() {
         }
       />
       <p className="data-note" aria-live="polite">
-        {lastSuccess
-          ? `Последнее успешное обновление: ${new Date(lastSuccess).toLocaleTimeString('ru-RU')}`
+        {state.updatedAt
+          ? `Последнее успешное обновление: ${new Date(state.updatedAt).toLocaleTimeString('ru-RU')}`
           : 'Очередь ещё не обновлена'}
         {autoRefresh &&
           ' · В скрытой вкладке автообновление приостанавливается'}
@@ -190,9 +186,20 @@ export function ReportsPage() {
         counts={state.data?.counts}
         onChange={update}
       />
-      {state.loading ? (
+      {state.data && state.loading && <p role="status">Обновление очереди…</p>}
+      {state.data && state.error && (
+        <section role="alert">
+          <ErrorState
+            message={`Не удалось обновить очередь: ${state.error}. Показаны последние полученные данные.`}
+          />
+          <button className="button secondary" onClick={refresh}>
+            Повторить загрузку
+          </button>
+        </section>
+      )}
+      {state.loading && !state.data ? (
         <LoadingState />
-      ) : state.error || !state.data ? (
+      ) : !state.data ? (
         <section>
           <ErrorState message={state.error ?? 'Нет данных'} />
           <button className="button secondary" onClick={refresh}>

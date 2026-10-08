@@ -77,8 +77,24 @@
 .health-stale {
   color: var(--warning);
 }
+.health-services-stale {
+  border-left: 2px solid var(--warning);
+  padding-left: 6px;
+}
+.health-services-stale .status-success {
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+.health-services-stale .status-success i {
+  background: var(--text-secondary);
+}
+.health-freshness {
+  font-size: 10px;
+  margin: 8px 0 0;
+}
 .is-compact .sidebar-health-head,
 .is-compact .sidebar-health-footer,
+.is-compact .sidebar-health .health-freshness,
 .is-compact .sidebar-health .environment,
 .is-compact .sidebar-health .system-badge > span:first-child {
   display: none;
@@ -162,6 +178,18 @@
 }
 .monitor-indicator.is-stale {
   background: var(--warning);
+}
+.monitor-indicator.is-unknown {
+  background: var(--text-secondary);
+  box-shadow: none;
+}
+.monitor-freshness {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: -8px 0 20px;
+}
+.monitor-freshness p {
+  margin: 5px 0;
 }
 .monitor-grid {
   display: grid;
