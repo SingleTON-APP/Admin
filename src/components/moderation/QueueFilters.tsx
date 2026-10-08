@@ -81,6 +81,7 @@ export function QueueFilters({
                 'POST',
                 'COMMENT',
                 'MEDIA',
+                'SUPPORT',
               ] satisfies ReportTargetType[]
             ).map((value) => (
               <option key={value} value={value}>

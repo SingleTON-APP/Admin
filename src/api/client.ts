@@ -66,6 +66,20 @@ async function resilientFetch(
   throw new Error('Не удалось получить ответ сервера');
 }
 
+/** Файл с API (cookie-сессия), например скриншот из обращения в поддержку. */
+export async function requestBlob(
+  path: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}/${path.replace(/^\//, '')}`, {
+    credentials: 'include',
+    signal,
+  });
+  if (!response.ok)
+    throw new ApiError(response.status, `HTTP ${response.status}`);
+  return response.blob();
+}
+
 export async function request<T>(
   path: string,
   init: RequestInit = {},

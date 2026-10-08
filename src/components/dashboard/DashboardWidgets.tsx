@@ -206,6 +206,7 @@ const targetLabels: Record<ReportTargetType, string> = {
   POST: 'Посты',
   COMMENT: 'Комментарии',
   MEDIA: 'Медиа',
+  SUPPORT: 'Обращения',
 };
 export function TypeDistribution({
   items,

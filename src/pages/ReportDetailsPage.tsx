@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { ActionPanel } from '../components/moderation/ActionPanel';
 import { ModerationContextViewer } from '../components/moderation/ModerationContextViewer';
 import { ReportSummary } from '../components/moderation/ReportSummary';
+import { SupportReplyPanel } from '../components/moderation/SupportReplyPanel';
 import { TargetRiskSummary } from '../components/moderation/TargetRiskSummary';
 import {
   ErrorState,
@@ -63,7 +64,7 @@ export function ReportDetailsPage() {
     <>
       <PageHeader
         eyebrow="Рабочее место модератора"
-        title={`Жалоба ${report.id.slice(0, 8)}`}
+        title={`${report.targetType === 'SUPPORT' ? 'Обращение' : 'Жалоба'} ${report.id.slice(0, 8)}`}
         description={`${reportTargetLabel[report.targetType]} · создана ${new Date(report.createdAt).toLocaleString('ru-RU')}`}
         actions={
           <>
@@ -77,6 +78,12 @@ export function ReportDetailsPage() {
       <div className="moderation-workbench">
         <div className="workbench-left">
           <ReportSummary report={report} />
+          {report.targetType === 'SUPPORT' && (
+            <SupportReplyPanel
+              report={report}
+              onSent={() => setReload((value) => value + 1)}
+            />
+          )}
           <section className="card report-history">
             <div className="card-head">
               <h2>История обработки</h2>

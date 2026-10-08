@@ -18,4 +18,18 @@ export const reportTargetLabel: Record<ReportTargetType, string> = {
   POST: 'Пост',
   COMMENT: 'Комментарий',
   MEDIA: 'Медиа',
+  SUPPORT: 'Поддержка',
 };
+
+/** Категории от клиентов Hub (жалобы, /support, /idea) — по-русски. */
+const reportCategoryLabels: Record<string, string> = {
+  support: 'Поддержка',
+  idea: 'Идея',
+  forum: 'Форум',
+  spam: 'Спам',
+  scam: 'Мошенничество',
+  abuse: 'Оскорбления или угрозы',
+  other: 'Другое',
+};
+export const reportCategoryLabel = (category: string | null | undefined) =>
+  category ? (reportCategoryLabels[category] ?? category) : '—';

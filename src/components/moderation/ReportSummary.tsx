@@ -4,6 +4,7 @@ import {
   reportPriorityLabel,
   reportStatusLabel,
   reportTargetLabel,
+  reportCategoryLabel,
 } from '../../types/report-labels';
 import { IDDisplay, StatusBadge } from '../ui/Primitives';
 
@@ -38,7 +39,7 @@ export function ReportSummary({ report }: { report: Report }) {
         </div>
         <div>
           <dt>Категория</dt>
-          <dd>{report.category}</dd>
+          <dd>{reportCategoryLabel(report.category)}</dd>
         </div>
         <div>
           <dt>Приоритет</dt>
