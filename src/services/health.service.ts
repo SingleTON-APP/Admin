@@ -1,9 +1,11 @@
 import { request } from '../api/client';
 
 export interface ServiceHealth {
+  name?: string;
+  description?: string;
   status: 'HEALTHY' | 'DEGRADED' | 'DOWN' | 'UNKNOWN';
   latencyMs?: number;
-  checkedAt?: string;
+  checkedAt?: string | null;
   configured?: boolean;
   probe?: string;
   reason?: string;
