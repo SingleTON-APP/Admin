@@ -9,76 +9,94 @@ import {
 import { IDDisplay, StatusBadge } from '../ui/Primitives';
 
 export function ReportSummary({ report }: { report: Report }) {
-  const created = new Date(report.createdAt);
-  const hours = Math.max(
-    0,
-    Math.floor((Date.now() - created.getTime()) / 3_600_000),
-  );
+  const category = report.category?.toLowerCase();
+  const label =
+    category === 'fraud'
+      ? 'Мошенничество'
+      : category === 'illegal'
+        ? 'Запрещённое содержимое'
+        : reportCategoryLabel(category);
   return (
-    <section className="card report-summary">
+    <section
+      className="card report-summary"
+      aria-labelledby="report-description-heading"
+    >
       <div className="card-head">
-        <h2>Жалоба</h2>
+        <div>
+          <span className="section-label">
+            {reportTargetLabel[report.targetType]} · {label}
+          </span>
+          <h2 id="report-description-heading">
+            {report.targetType === 'SUPPORT'
+              ? 'Описание обращения'
+              : 'Причина жалобы'}
+          </h2>
+        </div>
         <StatusBadge value={reportStatusLabel[report.status]} />
       </div>
-      <dl className="details-list compact">
-        <div>
-          <dt>ID</dt>
-          <dd>
-            <IDDisplay value={report.id} />
-          </dd>
-        </div>
-        <div>
-          <dt>Цель</dt>
-          <dd>{reportTargetLabel[report.targetType]}</dd>
-        </div>
-        <div>
-          <dt>ID объекта</dt>
-          <dd>
-            <IDDisplay value={report.targetId} />
-          </dd>
-        </div>
-        <div>
-          <dt>Категория</dt>
-          <dd>{reportCategoryLabel(report.category)}</dd>
-        </div>
-        <div>
-          <dt>Приоритет</dt>
-          <dd>
-            <StatusBadge value={reportPriorityLabel[report.priority]} />
-          </dd>
-        </div>
-        <div>
-          <dt>Возраст</dt>
-          <dd className={hours >= 24 ? 'text-danger' : ''}>
-            {hours < 24 ? `${hours} ч` : `${Math.floor(hours / 24)} д`}
-          </dd>
-        </div>
-        <div>
-          <dt>Исполнитель</dt>
-          <dd>{report.assignee?.name || 'Не назначен'}</dd>
-        </div>
-        <div>
-          <dt>Связанные</dt>
-          <dd>{report.relatedReportsCount ?? 0}</dd>
-        </div>
-      </dl>
-      <h3>Описание</h3>
-      <p>{report.reason}</p>
-      <hr />
-      <h3>Заявитель</h3>
-      {report.reporter ? (
-        <Link
-          className="user-card"
-          to={`/admin/users/${report.reporter.publicId}`}
-        >
-          <span>
-            <strong>@{report.reporter.username}</strong>
-            <small>{report.reporter.publicId}</small>
-          </span>
-        </Link>
-      ) : (
-        <p className="data-note">Пользователь удалён</p>
+      <p className="report-reason">{report.reason || 'Описание не указано.'}</p>
+      <div className="report-summary-meta">
+        <span>
+          Заявитель:{' '}
+          {report.reporter ? (
+            <Link to={`/admin/users/${report.reporter.publicId}`}>
+              @{report.reporter.username}
+            </Link>
+          ) : (
+            'пользователь удалён'
+          )}
+        </span>
+        <span>
+          Создана:{' '}
+          <time dateTime={report.createdAt}>
+            {new Date(report.createdAt).toLocaleString('ru-RU')}
+          </time>
+        </span>
+        <span>Исполнитель: {report.assignee?.name || 'Не назначен'}</span>
+        <StatusBadge value={reportPriorityLabel[report.priority]} />
+      </div>
+      {report.resolutionReason && (
+        <p className="report-resolution">
+          <strong>Решение:</strong> {report.resolutionReason}
+        </p>
       )}
+      <details className="report-technical-details">
+        <summary>Служебные сведения и идентификаторы</summary>
+        <dl className="details-list compact">
+          <div>
+            <dt>ID жалобы</dt>
+            <dd>
+              <IDDisplay value={report.id} />
+            </dd>
+          </div>
+          <div>
+            <dt>ID объекта</dt>
+            <dd>
+              <IDDisplay value={report.targetId} />
+            </dd>
+          </div>
+          {report.chatId && (
+            <div>
+              <dt>ID переписки</dt>
+              <dd>
+                <IDDisplay value={report.chatId} />
+              </dd>
+            </div>
+          )}
+          {report.sourceContextId && (
+            <div>
+              <dt>ID источника</dt>
+              <dd>
+                <IDDisplay value={report.sourceContextId} />
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>Связанные жалобы</dt>
+            <dd>{report.relatedReportsCount ?? 0}</dd>
+          </div>
+        </dl>
+      </details>
     </section>
   );
 }

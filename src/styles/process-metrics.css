@@ -1,0 +1,85 @@
+.monitor-tile-processes {
+  grid-column: 1/-1;
+}
+.process-controls {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+.process-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.process-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 12px 0;
+}
+.process-legend legend {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.process-legend label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-left: 3px solid;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.process-chart {
+  width: 100%;
+  max-height: 320px;
+  display: block;
+}
+.process-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.process-summary article {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 0;
+}
+.process-summary h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.process-summary dl {
+  margin: 12px 0;
+}
+.process-summary dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.process-summary dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+.process-summary small {
+  color: var(--text-secondary);
+}
+.process-summary .data-note {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.monitor-page .data-note {
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  margin: 10px 0;
+}

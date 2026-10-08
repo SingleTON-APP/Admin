@@ -45,7 +45,9 @@ describe('moderation context', () => {
     render(
       <ContextLevelSwitcher active={null} role="ADMIN" onSelect={onSelect} />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Расширенный' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Дополнительный контекст' }),
+    );
     expect(onSelect).not.toHaveBeenCalled();
     expect(
       screen.getByRole('button', { name: 'Запросить доступ' }),
@@ -68,7 +70,7 @@ describe('moderation context', () => {
       />,
     );
     expect(
-      screen.queryByRole('button', { name: 'Расширенный' }),
+      screen.queryByRole('button', { name: 'Дополнительный контекст' }),
     ).not.toBeInTheDocument();
   });
 
@@ -83,7 +85,7 @@ describe('moderation context', () => {
     expect(
       screen.getByText('Приватный контент не загружен'),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Только объект' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Содержимое жалобы' }));
     expect(screen.getByText('Загрузка данных…')).toBeInTheDocument();
     rejectRequest(new Error('Контекст недоступен'));
     await waitFor(() =>

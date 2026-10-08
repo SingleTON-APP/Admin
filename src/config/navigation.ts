@@ -24,6 +24,12 @@ export const navigation: NavigationItem[] = [
     icon: 'overview',
   },
   {
+    path: '/admin/notifications',
+    title: 'Уведомления',
+    group: 'Рабочее пространство',
+    icon: 'overview',
+  },
+  {
     path: '/admin/reports',
     title: 'Жалобы',
     group: 'Модерация',
@@ -69,6 +75,7 @@ export const navigation: NavigationItem[] = [
     icon: 'system',
     roles: managers,
   },
+  { path: '/admin/help', title: 'Справка', group: 'Помощь', icon: 'overview' },
 ];
 
 export function isNavigationActive(

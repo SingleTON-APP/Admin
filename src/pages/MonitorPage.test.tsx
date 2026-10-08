@@ -11,6 +11,7 @@ import { adminService } from '../services/admin.service';
 import { usageService, type UsageSummary } from '../services/usage.service';
 import type { Dashboard } from '../types/domain';
 import { MonitorPage } from './MonitorPage';
+import { processMetricsService } from '../services/process-metrics.service';
 
 const dashboard: Dashboard = {
   generatedAt: '2026-10-08T10:00:00Z',
@@ -55,6 +56,11 @@ function mount() {
   );
 }
 beforeEach(() => {
+  vi.spyOn(processMetricsService, 'snapshot').mockResolvedValue({
+    generatedAt: '2026-10-08T10:00:00Z',
+    startedAt: '2026-10-08T09:00:00Z',
+    operations: [],
+  });
   localStorage.clear();
   localStorage.setItem(
     'admin-monitor-settings',

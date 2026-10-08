@@ -1,0 +1,58 @@
+.help-page {
+  max-width: 1100px;
+}
+.help-search {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.help-search label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.help-search > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.help-search input {
+  flex: 1;
+  min-width: 180px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  font: inherit;
+}
+.help-search p {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.help-articles {
+  display: grid;
+  gap: 12px;
+}
+.help-article {
+  padding: 18px 20px;
+}
+.help-article summary {
+  cursor: pointer;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.help-article summary .section-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.help-article p {
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.help-article p:last-child {
+  margin-bottom: 0;
+}
+.help-empty {
+  padding: 24px;
+}

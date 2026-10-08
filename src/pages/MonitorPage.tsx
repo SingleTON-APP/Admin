@@ -13,17 +13,23 @@ import {
 } from '../components/dashboard/DashboardPanels';
 import { UsagePanel } from '../components/dashboard/UsagePanel';
 import { PageHeader } from '../components/ui/Primitives';
+import { processMetricsService } from '../services/process-metrics.service';
+import { ProcessMetricsPanel } from '../components/dashboard/ProcessMetricsPanel';
 
 const tiles = [
+  ['processes', 'Процессы и задержки'],
   ['metrics', 'Основные показатели'],
   ['registrations', 'Регистрации и активность'],
   ['reports', 'Динамика жалоб'],
   ['queue', 'Возраст очереди'],
   ['types', 'Типы жалоб'],
+  ['categories', 'Причины жалоб'],
+  ['resolution', 'Обработка жалоб'],
   ['usage', 'Время пользователей сайта'],
 ] as const;
 type Tile = (typeof tiles)[number][0];
 const defaults = {
+  minutes: 15 as 15 | 60,
   seconds: 30,
   days: 7 as 7 | 30,
   columns: 2,
@@ -42,6 +48,7 @@ function readSettings() {
       ? [...new Set<Tile>(saved.order.filter((id: Tile) => ids.includes(id)))]
       : [];
     return {
+      minutes: (saved.minutes === 60 ? 60 : 15) as 15 | 60,
       seconds: [0, 5, 15, 30, 60, 120, 300].includes(saved.seconds)
         ? saved.seconds
         : defaults.seconds,
@@ -51,7 +58,12 @@ function readSettings() {
         : defaults.columns,
       compact: saved.compact === true,
       visible: Array.isArray(saved.visible)
-        ? ids.filter((id) => saved.visible.includes(id))
+        ? ids.filter(
+            (id) =>
+              saved.visible.includes(id) ||
+              (!saved.order?.includes(id) &&
+                ['processes', 'categories', 'resolution'].includes(id)),
+          )
         : ids,
       order: [...order, ...ids.filter((id) => !order.includes(id))],
     };
@@ -61,6 +73,7 @@ function readSettings() {
 }
 
 function MonitorBoard({
+  minutes,
   days,
   seconds,
   columns,
@@ -77,10 +90,19 @@ function MonitorBoard({
   );
   const dashboard = usePolling(adminService.dashboard, seconds * 1000);
   const usage = usePolling(loadUsage, seconds * 1000);
+  const loadProcesses = useCallback(
+    (signal: AbortSignal) => processMetricsService.snapshot(minutes, signal),
+    [minutes],
+  );
+  const processes = usePolling(loadProcesses, seconds * 1000);
   const data = dashboard.data;
-  const loading = dashboard.loading || usage.loading;
-  const stale = !!(dashboard.error || usage.error);
-  const hasSnapshot = !!(dashboard.updatedAt || usage.updatedAt);
+  const loading = dashboard.loading || usage.loading || processes.loading;
+  const stale = !!(dashboard.error || usage.error || processes.error);
+  const hasSnapshot = !!(
+    dashboard.updatedAt ||
+    usage.updatedAt ||
+    processes.updatedAt
+  );
   return (
     <>
       <div className="monitor-status" role="status">
@@ -101,6 +123,7 @@ function MonitorBoard({
           onClick={() => {
             dashboard.refresh();
             usage.refresh();
+            processes.refresh();
           }}
           disabled={loading}
         >
@@ -110,6 +133,7 @@ function MonitorBoard({
       <div className="monitor-freshness" aria-live="polite">
         <ResourceFreshness label="Показатели и графики" state={dashboard} />
         <ResourceFreshness label="Время использования" state={usage} />
+        <ResourceFreshness label="Процессы" state={processes} />
       </div>
       <div
         className={`monitor-grid ${compact ? 'monitor-dense' : ''}`}
@@ -140,9 +164,15 @@ function MonitorBoard({
                   </button>
                 </div>
               </div>
-              {id !== 'usage' && !data && (
+              {id !== 'usage' && id !== 'processes' && !data && (
                 <p>{dashboard.error || 'Загрузка показателей…'}</p>
               )}
+              {id === 'processes' &&
+                (processes.data ? (
+                  <ProcessMetricsPanel snapshot={processes.data} />
+                ) : (
+                  <p>{processes.error || 'Загрузка замеров процессов…'}</p>
+                ))}
               {id === 'metrics' && data && (
                 <DashboardMetrics metrics={data.metrics} />
               )}
@@ -176,6 +206,41 @@ function MonitorBoard({
               {id === 'types' && data && (
                 <TypeDistribution items={data.reportsByType} />
               )}
+              {id === 'categories' && data && (
+                <ReportBars
+                  items={data.reportsByCategory}
+                  label="Причины жалоб · последние 30 дней, UTC"
+                />
+              )}
+              {id === 'resolution' && data && (
+                <>
+                  <p className="data-note">
+                    Последние {days} дней · UTC, по дате последнего решения.
+                    Текущие закрытые жалобы; не история всех смен статуса.
+                  </p>
+                  {data.reportResolutionTrend ? (
+                    <TrendChart
+                      points={data.reportResolutionTrend
+                        .slice(-days)
+                        .map((point) => ({
+                          date: point.date,
+                          count: point.resolved,
+                          secondary: point.rejected,
+                        }))}
+                      label="Решено"
+                      secondaryLabel="Отклонено"
+                    />
+                  ) : (
+                    <p className="data-note">
+                      Сбор статистики решений ещё не подключён.
+                    </p>
+                  )}
+                  <ReportBars
+                    items={data.reportOutcomes}
+                    label="Текущие статусы · за всё время"
+                  />
+                </>
+              )}
               {id === 'usage' &&
                 (usage.data ? (
                   <UsagePanel days={days} snapshot={usage.data} />
@@ -191,6 +256,47 @@ function MonitorBoard({
         </p>
       )}
     </>
+  );
+}
+
+const reportLabels: Record<string, string> = {
+  NEW: 'Новые',
+  OPEN: 'Новые',
+  IN_REVIEW: 'На рассмотрении',
+  RESOLVED: 'Решены',
+  REJECTED: 'Отклонены',
+  SPAM: 'Спам',
+  ABUSE: 'Оскорбления',
+  HARASSMENT: 'Травля',
+  ILLEGAL: 'Запрещённый контент',
+  OTHER: 'Другое',
+  OTHER_CATEGORIES: 'Остальные причины',
+  UNCATEGORIZED: 'Без категории',
+  UNKNOWN: 'Другие статусы',
+};
+function ReportBars({
+  items,
+  label,
+}: {
+  items?: Array<{ label: string; value: number }>;
+  label: string;
+}) {
+  if (!items) return <p className="data-note">Статистика ещё не подключена.</p>;
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+  if (!total) return <p className="data-note">Жалоб пока нет.</p>;
+  return (
+    <div className="bar-list">
+      <p className="data-note">{label}</p>
+      {items.map((item) => (
+        <div className="distribution-row" key={item.label}>
+          <span>{reportLabels[item.label] ?? item.label}</span>
+          <div aria-hidden="true">
+            <i style={{ width: `${(item.value / total) * 100}%` }} />
+          </div>
+          <strong>{item.value.toLocaleString('ru-RU')}</strong>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -270,7 +376,7 @@ export function MonitorPage() {
       <PageHeader
         eyebrow="Hub · мониторинг"
         title="Живой экран"
-        description="Пользователи сайта и очередь модерации. Настройки сохраняются на этом компьютере."
+        description="Задержки процессов, пользователи сайта и очередь модерации. Настройки сохраняются на этом компьютере."
         actions={
           <>
             <Link to="/admin" className="button secondary">
@@ -288,6 +394,22 @@ export function MonitorPage() {
       <details className="monitor-settings">
         <summary>Настроить экран</summary>
         <div className="monitor-settings-fields">
+          <label>
+            Окно процессов
+            <select
+              aria-label="Окно процессов"
+              value={settings.minutes}
+              onChange={(event) =>
+                setSettings((previous) => ({
+                  ...previous,
+                  minutes: Number(event.target.value) as 15 | 60,
+                }))
+              }
+            >
+              <option value={15}>15 минут</option>
+              <option value={60}>60 минут</option>
+            </select>
+          </label>
           <label>
             Обновление
             <select
@@ -382,7 +504,11 @@ export function MonitorPage() {
           ))}
         </div>
       </details>
-      <MonitorBoard key={settings.days} {...settings} move={move} />
+      <MonitorBoard
+        key={`${settings.days}:${settings.minutes}`}
+        {...settings}
+        move={move}
+      />
     </div>
   );
 }
