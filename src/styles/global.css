@@ -89,14 +89,16 @@ kbd {
   min-height: 100vh;
 }
 .sidebar {
+  display: flex;
+  flex-direction: column;
   position: sticky;
   top: 0;
   z-index: 4;
   width: 228px;
-  height: 100vh;
+  height: 100dvh;
   flex: 0 0 228px;
-  overflow-y: auto;
-  padding: 17px 12px 48px;
+  overflow: hidden;
+  padding: 17px 12px 12px;
   background: #0e1115;
   border-right: 1px solid var(--border);
   transition:

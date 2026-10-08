@@ -12,6 +12,12 @@ const managers: StaffRole[] = ['ADMIN', 'FULL_ADMIN'];
 
 export const navigation: NavigationItem[] = [
   {
+    path: '/admin/monitor',
+    title: 'Мониторинг',
+    group: 'Рабочее пространство',
+    icon: 'system',
+  },
+  {
     path: '/admin',
     title: 'Обзор',
     group: 'Рабочее пространство',

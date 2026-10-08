@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
 import { AuditPage } from '../pages/AuditPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { MonitorPage } from '../pages/MonitorPage';
 import { ReportDetailsPage } from '../pages/ReportDetailsPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { StaffPage } from '../pages/StaffPage';
@@ -21,6 +22,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: '/admin', element: <DashboardPage /> },
+      { path: '/admin/monitor', element: <MonitorPage /> },
       { path: '/admin/users', element: <UsersPage /> },
       { path: '/admin/users/:id', element: <UserDetailsPage /> },
       { path: '/admin/reports', element: <ReportsPage /> },
