@@ -145,3 +145,12 @@
   content: '•••';
   font-size: 12px;
 }
+
+@media (max-height: 800px) {
+  .sidebar .nav-group h2 {
+    line-height: 14px;
+  }
+  .sidebar .nav-group a {
+    min-height: 26px;
+  }
+}

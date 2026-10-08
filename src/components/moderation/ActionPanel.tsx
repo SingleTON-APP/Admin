@@ -135,6 +135,35 @@ export function ActionPanel({
           {busy === 'take' ? 'Выполняется…' : 'Взять в работу'}
         </button>
       )}
+      <div className="action-group">
+        <h3>Решение</h3>
+        <button
+          className="button secondary full-width"
+          disabled={!!busy || report.status === 'REJECTED'}
+          onClick={() =>
+            setPending({
+              kind: 'status',
+              status: 'REJECTED',
+              label: 'Отклонить жалобу',
+            })
+          }
+        >
+          Нарушения нет / отклонить
+        </button>
+        <button
+          className="button primary full-width"
+          disabled={!!busy || report.status === 'RESOLVED'}
+          onClick={() =>
+            setPending({
+              kind: 'status',
+              status: 'RESOLVED',
+              label: 'Завершить жалобу',
+            })
+          }
+        >
+          Завершить жалобу
+        </button>
+      </div>
       <label className="form-label">
         Исполнитель
         <select
@@ -171,7 +200,16 @@ export function ActionPanel({
           {(
             ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] satisfies ReportPriority[]
           ).map((value) => (
-            <option key={value}>{value}</option>
+            <option key={value} value={value}>
+              {
+                {
+                  LOW: 'Низкий',
+                  MEDIUM: 'Средний',
+                  HIGH: 'Высокий',
+                  CRITICAL: 'Критический',
+                }[value]
+              }
+            </option>
           ))}
         </select>
       </label>
@@ -238,35 +276,6 @@ export function ActionPanel({
           )}
         </div>
       )}
-      <div className="action-group">
-        <h3>Решение</h3>
-        <button
-          className="button secondary full-width"
-          disabled={!!busy || report.status === 'REJECTED'}
-          onClick={() =>
-            setPending({
-              kind: 'status',
-              status: 'REJECTED',
-              label: 'Отклонить жалобу',
-            })
-          }
-        >
-          Нарушения нет / отклонить
-        </button>
-        <button
-          className="button primary full-width"
-          disabled={!!busy || report.status === 'RESOLVED'}
-          onClick={() =>
-            setPending({
-              kind: 'status',
-              status: 'RESOLVED',
-              label: 'Завершить жалобу',
-            })
-          }
-        >
-          Завершить жалобу
-        </button>
-      </div>
       <form
         className="internal-note"
         onSubmit={(event) => {
