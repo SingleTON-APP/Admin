@@ -11,6 +11,8 @@ import { StaffPage } from '../pages/StaffPage';
 import { SystemPage } from '../pages/SystemPage';
 import { UserDetailsPage } from '../pages/UserDetailsPage';
 import { UsersPage } from '../pages/UsersPage';
+import { NotificationsPage } from '../pages/NotificationsPage';
+import { HelpPage } from '../pages/HelpPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/admin" replace /> },
@@ -23,6 +25,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/admin', element: <DashboardPage /> },
       { path: '/admin/monitor', element: <MonitorPage /> },
+      { path: '/admin/notifications', element: <NotificationsPage /> },
+      { path: '/admin/help', element: <HelpPage /> },
       { path: '/admin/users', element: <UsersPage /> },
       { path: '/admin/users/:id', element: <UserDetailsPage /> },
       { path: '/admin/reports', element: <ReportsPage /> },

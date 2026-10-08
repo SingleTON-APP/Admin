@@ -7,6 +7,10 @@ import { useAdminLogout } from '../../features/admin-access/LogoutContext';
 import { Avatar } from '../ui/Primitives';
 import { Icon } from '../ui/Icon';
 import { SidebarHealth } from './SidebarHealth';
+import {
+  NotificationBell,
+  NotificationsProvider,
+} from '../notifications/Notifications';
 import '../../styles/monitor.css';
 
 const routeLabels: Record<string, string> = {
@@ -18,9 +22,20 @@ const routeLabels: Record<string, string> = {
   system: 'Система',
   security: 'Безопасность',
   monitor: 'Мониторинг',
+  notifications: 'Уведомления',
+  help: 'Справка',
 };
 
 export function AppShell() {
+  const admin = useAdmin();
+  return (
+    <NotificationsProvider key={`${admin.id}:${admin.role}`}>
+      <ShellContent />
+    </NotificationsProvider>
+  );
+}
+
+function ShellContent() {
   const admin = useAdmin();
   const logout = useAdminLogout();
   const [compact, setCompact] = useState(
@@ -143,6 +158,7 @@ export function AppShell() {
               ))}
             </div>
             <div className="topbar-actions">
+              <NotificationBell />
               <button
                 className="global-search"
                 onClick={() => setSearchOpen(true)}

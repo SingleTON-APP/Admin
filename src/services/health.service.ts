@@ -1,12 +1,30 @@
 import { request } from '../api/client';
-import type { Dashboard } from '../types/domain';
+
+export interface ServiceHealth {
+  name?: string;
+  description?: string;
+  status: 'HEALTHY' | 'DEGRADED' | 'DOWN' | 'UNKNOWN';
+  latencyMs?: number;
+  checkedAt?: string | null;
+  configured?: boolean;
+  probe?: string;
+  reason?: string;
+  primary?: boolean;
+}
+export type HealthServices = Record<string, ServiceHealth> & {
+  api: ServiceHealth;
+  database: ServiceHealth;
+  posts: ServiceHealth;
+};
 
 export const healthService = {
-  snapshot: async (signal?: AbortSignal) => {
+  snapshot: async (
+    signal?: AbortSignal,
+  ): Promise<{ generatedAt: string; services: HealthServices }> => {
     const started = performance.now();
     const result = await request<{
       generatedAt: string;
-      services: Dashboard['systemStatus'];
+      services: HealthServices;
     }>('/admin/health', { signal });
     return {
       ...result,

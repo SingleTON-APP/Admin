@@ -8,24 +8,28 @@ import type {
   ModerationMessage,
   ModerationPost,
   ReportContextContent,
+  ReportTargetType,
   StaffRole,
 } from '../../types/domain';
 import { Dialog } from '../ui/Dialog';
 import { ErrorState, LoadingState } from '../ui/Primitives';
+import { reportTargetLabel } from '../../types/report-labels';
 
 const levelLabel: Record<ContextLevel, string> = {
-  REPORTED_ONLY: 'Только объект',
-  NEARBY: 'Ближний контекст',
-  EXTENDED: 'Расширенный',
+  REPORTED_ONLY: 'Содержимое жалобы',
+  NEARBY: 'Соседние сообщения',
+  EXTENDED: 'Дополнительный контекст',
 };
 export function ContextLevelSwitcher({
   active,
   role,
   onSelect,
+  nearbyLabel = levelLabel.NEARBY,
 }: {
   active: ContextLevel | null;
   role: StaffRole;
   onSelect: (level: ContextLevel, justification?: string) => void;
+  nearbyLabel?: string;
 }) {
   const [extendedOpen, setExtendedOpen] = useState(false);
   const [justification, setJustification] = useState('');
@@ -40,23 +44,25 @@ export function ContextLevelSwitcher({
           <button
             key={level}
             className={active === level ? 'active' : ''}
+            aria-pressed={active === level}
             onClick={() => onSelect(level)}
           >
-            {levelLabel[level]}
+            {level === 'NEARBY' ? nearbyLabel : levelLabel[level]}
           </button>
         ))}
         {role !== 'MODERATOR' && (
           <button
             className={active === 'EXTENDED' ? 'active' : ''}
+            aria-pressed={active === 'EXTENDED'}
             onClick={() => setExtendedOpen(true)}
           >
-            Расширенный
+            Дополнительный контекст
           </button>
         )}
       </div>
       <Dialog
         open={extendedOpen}
-        title="Расширенный приватный контекст"
+        title="Дополнительный приватный контекст"
         onClose={() => setExtendedOpen(false)}
       >
         <form
@@ -180,10 +186,6 @@ export function MessageRow({
             {new Date(message.createdAt).toLocaleString('ru-RU')}
           </time>
         )}
-        {message.messageSequence !== null &&
-          message.messageSequence !== undefined && (
-            <code>#{message.messageSequence}</code>
-          )}
       </header>
       {message.deleted || message.status === 'DELETED' ? (
         <p className="deleted-text">Сообщение удалено</p>
@@ -194,7 +196,19 @@ export function MessageRow({
       ) : (
         <p>{message.text ?? 'Текст недоступен на этом уровне контекста'}</p>
       )}
-      {message.reply && <small>Ответ на {message.reply.messageId}</small>}
+      {(message.reply || message.messageSequence != null) && (
+        <details className="message-technical">
+          <summary>Служебные сведения сообщения</summary>
+          {message.reply && (
+            <p>
+              Ответ на сообщение: <code>{message.reply.messageId}</code>
+            </p>
+          )}
+          {message.messageSequence != null && (
+            <p>Номер в переписке: {message.messageSequence}</p>
+          )}
+        </details>
+      )}
       {message.attachment && <Attachment value={message.attachment} />}
     </article>
   );
@@ -270,6 +284,11 @@ export function CommentBranch({
 }) {
   return (
     <div className="comment-context">
+      <section>
+        <h3>Комментарий, на который пожаловались</h3>
+        <CommentItem comment={context.target} reported />
+      </section>
+      <h3>Публикация и обсуждение</h3>
       <PostCard post={context.post} />
       {!!context.parents.length && (
         <section>
@@ -279,10 +298,6 @@ export function CommentBranch({
           ))}
         </section>
       )}
-      <section>
-        <h3>Объект жалобы</h3>
-        <CommentItem comment={context.target} reported />
-      </section>
       {!!context.siblings.length && (
         <section>
           <h3>Соседние ответы</h3>
@@ -327,9 +342,12 @@ function ContextContent({ value }: { value: ReportContextContent }) {
   if (value.kind === 'COMMENT') return <CommentBranch context={value} />;
   return (
     <div className="context-consent">
-      <strong>{value.kind}</strong>
+      <strong>{reportTargetLabel[value.kind]}</strong>
       <p>Для этой цели доступна только безопасная служебная информация.</p>
-      <code>{value.target.id ?? 'ID отсутствует'}</code>
+      <details>
+        <summary>Идентификатор объекта</summary>
+        <code>{value.target.id ?? 'ID отсутствует'}</code>
+      </details>
       {value.target.deleted && <p className="deleted-text">Объект удалён</p>}
     </div>
   );
@@ -337,9 +355,11 @@ function ContextContent({ value }: { value: ReportContextContent }) {
 export function ModerationContextViewer({
   reportId,
   role,
+  targetType,
 }: {
   reportId: string;
   role: StaffRole;
+  targetType?: ReportTargetType;
 }) {
   const requestGeneration = useRef(0);
   const [level, setLevel] = useState<ContextLevel | null>(null);
@@ -384,20 +404,32 @@ export function ModerationContextViewer({
     <section className="card context-panel">
       <div className="card-head">
         <div>
-          <span className="section-label">Privacy controlled</span>
-          <h2>Контекст жалобы</h2>
+          <span className="section-label">Просмотр фиксируется в аудите</span>
+          <h2>
+            {targetType === 'SUPPORT'
+              ? 'Содержимое обращения'
+              : 'Содержимое и контекст жалобы'}
+          </h2>
         </div>
       </div>
       <ContextLevelSwitcher
         active={level}
         role={role}
+        nearbyLabel={
+          targetType === 'POST'
+            ? 'Соседние публикации'
+            : targetType === 'COMMENT'
+              ? 'Ветка обсуждения'
+              : undefined
+        }
         onSelect={(next, reason) => void load(next, reason)}
       />
       {!level && (
         <div className="context-consent">
           <strong>Приватный контент не загружен</strong>
           <p>
-            Выберите уровень. Просмотр содержимого фиксируется в журнале аудита.
+            Откройте содержимое жалобы. Если его недостаточно для решения,
+            запросите соседние сообщения или дополнительный контекст.
           </p>
         </div>
       )}
@@ -406,7 +438,12 @@ export function ModerationContextViewer({
       ) : error ? (
         <ErrorState message={error} />
       ) : (
-        context && <ContextContent value={context} />
+        context && (
+          <>
+            <ContextLocation value={context} />
+            <ContextContent value={context} />
+          </>
+        )
       )}
       {context?.kind === 'MESSAGE' && level !== 'REPORTED_ONLY' && (
         <div className="context-pagination">
@@ -445,5 +482,39 @@ export function ModerationContextViewer({
         </div>
       )}
     </section>
+  );
+}
+
+function ContextLocation({ value }: { value: ReportContextContent }) {
+  const location =
+    value.kind === 'MESSAGE'
+      ? 'Переписка'
+      : value.kind === 'POST'
+        ? value.target.topicHashtag || 'Лента публикаций'
+        : value.kind === 'COMMENT'
+          ? value.post.topicHashtag ||
+            value.post.title ||
+            'Обсуждение публикации'
+          : reportTargetLabel[value.kind];
+  const id =
+    value.kind === 'MESSAGE'
+      ? value.chatId
+      : value.kind === 'POST'
+        ? value.target.topicId
+        : value.kind === 'COMMENT'
+          ? value.target.postId
+          : undefined;
+  return (
+    <div className="context-location">
+      <span>
+        Место: <strong>{location}</strong>
+      </span>
+      {id && (
+        <details>
+          <summary>Идентификатор места</summary>
+          <code>{id}</code>
+        </details>
+      )}
+    </div>
   );
 }

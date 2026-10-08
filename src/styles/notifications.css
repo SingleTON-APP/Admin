@@ -1,0 +1,118 @@
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: inherit;
+}
+.notification-count {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 18px;
+  padding: 2px 4px;
+  border-radius: 12px;
+  background: #c84453;
+  color: white;
+  font-size: 10px;
+}
+.notification-offline {
+  color: #b07818;
+}
+.notification-toasts {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 70;
+  display: grid;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+}
+.notification-toast {
+  position: relative;
+  padding: 18px 36px 18px 18px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warning);
+  background: var(--surface-secondary);
+  border-radius: 12px;
+  box-shadow: 0 6px 30px #0006;
+  overflow-wrap: anywhere;
+}
+.notification-toast.severity-error {
+  border-left-color: #c84453;
+}
+.notification-toast.severity-info {
+  border-left-color: #268064;
+}
+.notification-dismiss {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+}
+.notification-preview {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.notification-preview article {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+.notification-preview article.is-unread,
+.notification-event.is-unread {
+  border-left: 3px solid #526bd1;
+}
+.notification-history {
+  display: grid;
+  gap: 16px;
+}
+.notification-event {
+  padding: 22px;
+}
+.notification-event header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notification-event h2 {
+  margin: 6px 0;
+  font-size: 17px;
+}
+.notification-event p,
+.notification-event dd {
+  overflow-wrap: anywhere;
+}
+.notification-event time,
+.notification-event small {
+  color: #657088;
+  font-size: 12px;
+}
+.notification-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  margin: 18px 0;
+}
+.notification-facts dt {
+  color: #657088;
+  font-size: 12px;
+}
+.notification-facts dd {
+  margin: 4px 0 0;
+}
+.notification-event footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

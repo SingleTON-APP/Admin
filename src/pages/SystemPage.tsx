@@ -1,53 +1,70 @@
-import {
-  ErrorState,
-  LoadingState,
-  PageHeader,
-  StatusBadge,
-} from '../components/ui/Primitives';
-import { useAsync } from '../hooks/useAsync';
-import { adminService } from '../services/admin.service';
+import { Link } from 'react-router-dom';
+import { PageHeader } from '../components/ui/Primitives';
+import { SystemBadge } from '../components/dashboard/DashboardWidgets';
+import { usePolling } from '../hooks/usePolling';
+import { healthService } from '../services/health.service';
 
 export function SystemPage() {
-  const state = useAsync((signal) => adminService.system(signal), []);
-  if (state.loading) return <LoadingState />;
-  if (state.error || !state.data)
-    return <ErrorState message={state.error ?? 'Нет данных'} />;
+  const state = usePolling(healthService.snapshot, 30_000);
   return (
     <>
       <PageHeader
-        eyebrow="System"
+        eyebrow="Сервисы Hub"
         title="Состояние системы"
-        description="Проверки, которые фактически выполняет сервер"
+        description="Активные проверки каждые 30 секунд. Доступность сервиса и успешность пользовательского процесса — разные показатели."
+        actions={
+          <>
+            <Link className="button secondary" to="/admin/monitor">
+              Графики процессов
+            </Link>
+            <button
+              className="button secondary"
+              disabled={state.loading}
+              onClick={state.refresh}
+            >
+              Обновить
+            </button>
+          </>
+        }
       />
+      {state.error && (
+        <p className="health-stale" role="alert">
+          {state.error}
+          {state.data ? ' Показан последний полученный снимок.' : ''}
+        </p>
+      )}
+      {!state.data && state.loading && <p role="status">Проверка сервисов…</p>}
       <div className="services-grid">
-        <article className="card service-card">
-          <div className="card-head">
-            <h2>API</h2>
-            <StatusBadge value={state.data.api.status} />
-          </div>
-          <dl>
-            <div>
-              <dt>Версия</dt>
-              <dd>{state.data.api.version}</dd>
-            </div>
-            <div>
-              <dt>Uptime</dt>
-              <dd>{Math.floor(state.data.api.uptimeSeconds / 60)} мин</dd>
-            </div>
-          </dl>
-        </article>
-        <article className="card service-card">
-          <div className="card-head">
-            <h2>Database</h2>
-            <StatusBadge value={state.data.database.status} />
-          </div>
-          <dl>
-            <div>
-              <dt>Задержка</dt>
-              <dd>{state.data.database.latencyMs} ms</dd>
-            </div>
-          </dl>
-        </article>
+        {Object.entries(state.data?.services ?? {}).map(([id, service]) => (
+          <article className="card service-card" key={id}>
+            <SystemBadge name={service.name ?? id} value={service} />
+            <p>{service.description || 'Подробности проверки недоступны.'}</p>
+            <dl>
+              <div>
+                <dt>Последняя проверка</dt>
+                <dd>
+                  {service.checkedAt
+                    ? new Date(service.checkedAt).toLocaleString('ru-RU')
+                    : 'Ещё не выполнена'}
+                </dd>
+              </div>
+              <div>
+                <dt>Способ проверки</dt>
+                <dd>
+                  {service.configured === false
+                    ? 'Не настроен'
+                    : (service.probe ?? 'Нет данных')}
+                </dd>
+              </div>
+              {service.reason && (
+                <div>
+                  <dt>Результат проверки</dt>
+                  <dd>{service.reason}</dd>
+                </div>
+              )}
+            </dl>
+          </article>
+        ))}
       </div>
     </>
   );
