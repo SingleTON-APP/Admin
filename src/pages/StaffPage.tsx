@@ -28,6 +28,7 @@ function StaffManagement({ actorId }: { actorId: string }) {
   const [selected, setSelected] = useState<AdminAccount | 'new' | null>(null);
   const [failure, setFailure] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resetTarget, setResetTarget] = useState<AdminAccount | null>(null);
   const state = useAsync((signal) => adminAuthService.staff(signal), [reload]);
   const account = selected && selected !== 'new' ? selected : null;
   const columns: Column<AdminAccount>[] = [
@@ -51,6 +52,26 @@ function StaffManagement({ actorId }: { actorId: string }) {
       header: 'Доступ',
       render: (row) => (
         <StatusBadge value={row.disabled ? 'DISABLED' : 'ACTIVE'} />
+      ),
+    },
+    {
+      key: 'totp',
+      header: 'Двухфакторная защита',
+      render: (row) => (
+        <span>
+          {row.totpEnabled ? 'Включена' : 'Выключена'}{' '}
+          {row.totpEnabled && row.userId !== actorId && (
+            <button
+              className="button secondary"
+              onClick={() => {
+                setFailure('');
+                setResetTarget(row);
+              }}
+            >
+              Сбросить 2FA
+            </button>
+          )}
+        </span>
       ),
     },
     {
@@ -233,6 +254,73 @@ function StaffManagement({ actorId }: { actorId: string }) {
               {busy ? 'Сохранение…' : 'Сохранить'}
             </button>
           </div>
+        </form>
+      </Dialog>
+      <Dialog
+        open={!!resetTarget}
+        title="Сбросить двухфакторную защиту сотрудника"
+        dismissDisabled={busy}
+        onClose={() => {
+          if (!busy) setResetTarget(null);
+        }}
+      >
+        <form
+          key={resetTarget?.id}
+          className="form-stack"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (busy || !resetTarget) return;
+            const fields = new FormData(event.currentTarget);
+            setBusy(true);
+            setFailure('');
+            try {
+              await adminAuthService.resetTotp(
+                resetTarget.id,
+                String(fields.get('rootPassword')),
+                String(fields.get('reason')).trim(),
+              );
+              setResetTarget(null);
+              setReload((value) => value + 1);
+            } catch (error) {
+              setFailure(
+                error instanceof Error
+                  ? error.message
+                  : 'Не удалось сбросить защиту',
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <p>
+            Сотрудник: <strong>{resetTarget?.username}</strong>. Все его сессии
+            будут завершены. Применяйте только после проверки личности; действие
+            записывается в аудит.
+          </p>
+          <label>
+            Ваш личный пароль FULL_ADMIN
+            <input
+              name="rootPassword"
+              type="password"
+              autoComplete="current-password"
+              required
+              disabled={busy}
+            />
+          </label>
+          <label>
+            Основание сброса
+            <textarea
+              name="reason"
+              required
+              minLength={10}
+              maxLength={1000}
+              disabled={busy}
+            />
+          </label>
+          {failure && <p role="alert">{failure}</p>}
+          <button className="button danger" disabled={busy}>
+            {busy ? 'Сброс…' : 'Подтвердить сброс 2FA'}
+          </button>
         </form>
       </Dialog>
     </>

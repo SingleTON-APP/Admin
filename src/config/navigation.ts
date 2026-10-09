@@ -12,6 +12,43 @@ const managers: StaffRole[] = ['ADMIN', 'FULL_ADMIN'];
 
 export const navigation: NavigationItem[] = [
   {
+    path: '/admin/history',
+    title: 'История метрик',
+    group: 'Мониторинг',
+    icon: 'system',
+  },
+  {
+    path: '/admin/call-quality',
+    title: 'Качество звонков',
+    group: 'Мониторинг',
+    icon: 'system',
+  },
+  {
+    path: '/admin/thresholds',
+    title: 'Пороги уведомлений',
+    group: 'Мониторинг',
+    icon: 'system',
+  },
+  {
+    path: '/admin/report-groups',
+    title: 'Группы жалоб',
+    group: 'Модерация',
+    icon: 'shield',
+  },
+  {
+    path: '/admin/appeals',
+    title: 'Апелляции',
+    group: 'Модерация',
+    icon: 'shield',
+    roles: managers,
+  },
+  {
+    path: '/admin/access',
+    title: 'Мои сессии и 2FA',
+    group: 'Доступ',
+    icon: 'lock',
+  },
+  {
     path: '/admin/monitor',
     title: 'Мониторинг',
     group: 'Рабочее пространство',

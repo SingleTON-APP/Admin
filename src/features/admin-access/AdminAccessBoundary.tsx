@@ -79,13 +79,22 @@ export function AdminAccessBoundary({ children }: { children: ReactNode }) {
     setBusy(true);
     setFailure('');
     try {
+      const code = String(fields.get('code') || '').trim();
       const value = session?.gateAuthenticated
-        ? await adminAuthService.login(
-            String(fields.get('username')),
-            String(fields.get('password')),
-          )
+        ? code
+          ? await adminAuthService.login(
+              String(fields.get('username')),
+              String(fields.get('password')),
+              code,
+            )
+          : await adminAuthService.login(
+              String(fields.get('username')),
+              String(fields.get('password')),
+            )
         : await adminAuthService.gate(String(fields.get('password')));
-      form.reset();
+      if (value.requiresTotp)
+        setFailure('Введите код из приложения-аутентификатора.');
+      else form.reset();
       setSession(value);
     } catch (error) {
       setFailure(
@@ -162,6 +171,18 @@ export function AdminAccessBoundary({ children }: { children: ReactNode }) {
               maxLength={256}
             />
           </label>
+          {session.gateAuthenticated && (
+            <label>
+              Код 2FA или резервный код
+              <input
+                name="code"
+                autoComplete="one-time-code"
+                maxLength={64}
+                required={session.requiresTotp === true}
+              />
+              <small>Нужен только если защита включена для сотрудника.</small>
+            </label>
+          )}
           {failure && (
             <p className="state-error" role="alert">
               {failure}

@@ -1,0 +1,40 @@
+.sidebar > nav {
+  overflow: hidden;
+}
+.sidebar .nav-group {
+  margin-bottom: 4px;
+}
+.sidebar .nav-group-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: left;
+  font-size: 10px;
+  cursor: pointer;
+}
+.sidebar .nav-group-toggle[aria-expanded='true'] {
+  color: var(--text-primary);
+}
+.sidebar .nav-group-toggle i {
+  font-style: normal;
+}
+.sidebar .nav-group a {
+  min-height: 30px;
+  padding: 6px 10px;
+}
+.is-compact .sidebar .nav-group-toggle {
+  justify-content: center;
+}
+.is-compact .sidebar .nav-group-toggle span {
+  display: none;
+}
+.is-compact .sidebar .nav-group-toggle i {
+  font-size: 17px;
+}

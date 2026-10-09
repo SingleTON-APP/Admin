@@ -12,6 +12,7 @@ import {
   NotificationsProvider,
 } from '../notifications/Notifications';
 import '../../styles/monitor.css';
+import '../../styles/sidebar-navigation.css';
 
 const routeLabels: Record<string, string> = {
   admin: 'Админка',
@@ -24,6 +25,12 @@ const routeLabels: Record<string, string> = {
   monitor: 'Мониторинг',
   notifications: 'Уведомления',
   help: 'Справка',
+  history: 'История метрик',
+  'call-quality': 'Качество звонков',
+  thresholds: 'Пороги уведомлений',
+  access: 'Мои сессии и 2FA',
+  'report-groups': 'Группы жалоб',
+  appeals: 'Апелляции',
 };
 
 export function AppShell() {
@@ -69,7 +76,28 @@ function ShellContent() {
       ),
     [admin.role],
   );
-  const groups = [...new Set(allowedNavigation.map((item) => item.group))];
+  const groupOrder = [
+    'Рабочее пространство',
+    'Мониторинг',
+    'Модерация',
+    'Пользователи',
+    'Управление',
+    'Доступ',
+    'Помощь',
+  ];
+  const groups = [...new Set(allowedNavigation.map((item) => item.group))].sort(
+    (left, right) => groupOrder.indexOf(left) - groupOrder.indexOf(right),
+  );
+  const activeGroup =
+    allowedNavigation.find((item) =>
+      isNavigationActive(item.path, location.pathname, location.search),
+    )?.group || groups[0];
+  const [expanded, setExpanded] = useState<{
+    route: string;
+    group: string | null;
+  } | null>(null);
+  const expandedGroup =
+    expanded?.route === location.pathname ? expanded.group : activeGroup;
   const crumbs = location.pathname
     .split('/')
     .filter(Boolean)
@@ -112,37 +140,56 @@ function ShellContent() {
           <nav aria-label="Основная навигация">
             {groups.map((group) => (
               <section key={group} className="nav-group">
-                <h2>{group}</h2>
-                {allowedNavigation
-                  .filter((item) => item.group === group)
-                  .map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={
-                        isNavigationActive(
-                          item.path,
-                          location.pathname,
-                          location.search,
-                        )
-                          ? 'active'
-                          : undefined
-                      }
-                      aria-current={
-                        isNavigationActive(
-                          item.path,
-                          location.pathname,
-                          location.search,
-                        )
-                          ? 'page'
-                          : undefined
-                      }
-                      title={compact ? item.title : undefined}
-                    >
-                      <Icon name={item.icon} />
-                      <span>{item.title}</span>
-                    </Link>
-                  ))}
+                <button
+                  className="nav-group-toggle"
+                  type="button"
+                  aria-label={group}
+                  aria-expanded={expandedGroup === group}
+                  onClick={() =>
+                    setExpanded({
+                      route: location.pathname,
+                      group: expandedGroup === group ? null : group,
+                    })
+                  }
+                  title={compact ? group : undefined}
+                >
+                  <span>{group}</span>
+                  <i aria-hidden="true">
+                    {expandedGroup === group ? '⌄' : '›'}
+                  </i>
+                </button>
+                <div hidden={expandedGroup !== group}>
+                  {allowedNavigation
+                    .filter((item) => item.group === group)
+                    .map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={
+                          isNavigationActive(
+                            item.path,
+                            location.pathname,
+                            location.search,
+                          )
+                            ? 'active'
+                            : undefined
+                        }
+                        aria-current={
+                          isNavigationActive(
+                            item.path,
+                            location.pathname,
+                            location.search,
+                          )
+                            ? 'page'
+                            : undefined
+                        }
+                        title={compact ? item.title : undefined}
+                      >
+                        <Icon name={item.icon} />
+                        <span>{item.title}</span>
+                      </Link>
+                    ))}
+                </div>
               </section>
             ))}
           </nav>

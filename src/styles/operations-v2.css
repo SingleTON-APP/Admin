@@ -1,0 +1,125 @@
+.operations-page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.operations-page > .card {
+  padding: 20px;
+  min-width: 0;
+}
+.operations-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.operations-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.operations-controls input,
+.operations-controls select {
+  padding: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.operations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr));
+  gap: 16px;
+}
+.operations-grid > .card {
+  padding: 20px;
+}
+.operations-page table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.operations-page th,
+.operations-page td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.operations-page caption {
+  text-align: left;
+  padding-bottom: 12px;
+}
+.operations-scroll {
+  overflow: auto;
+}
+.operations-page .coverage-warning {
+  padding: 12px;
+  border-left: 3px solid var(--warning);
+  background: var(--surface-secondary);
+}
+.operations-page p {
+  line-height: 1.6;
+}
+.operations-page .preserve-lines {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.operations-page .session-current {
+  border-color: var(--accent);
+}
+.operations-page .secret-value {
+  display: block;
+  user-select: all;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  background: var(--surface-secondary);
+  border-radius: 6px;
+}
+.operations-page .threshold-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.operations-page .threshold-fields input {
+  width: 100%;
+  min-width: 0;
+}
+.operations-page .quality-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.operations-page .quality-metrics dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.operations-page .quality-metrics dd {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+.operations-page .pagination {
+  gap: 16px;
+}
+@media (max-width: 600px) {
+  .operations-page .threshold-fields {
+    grid-template-columns: 1fr;
+  }
+}
+.history-trend {
+  margin: 16px 0;
+  color: var(--accent, #2563eb);
+}
+.history-trend figcaption {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.history-trend svg {
+  width: 100%;
+  height: auto;
+}
+.history-trend text {
+  font-size: 10px;
+  fill: var(--text-secondary);
+}
