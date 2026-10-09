@@ -36,6 +36,23 @@ describe('compact sidebar groups', () => {
     const nav = within(
       screen.getByRole('navigation', { name: 'Основная навигация' }),
     );
+    expect(
+      nav
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label')),
+    ).toEqual([
+      'Рабочее пространство',
+      'Мониторинг',
+      'Модерация',
+      'Пользователи',
+      'Контент',
+      'Управление',
+      'Доступ',
+      'Помощь',
+    ]);
+    fireEvent.click(nav.getByRole('button', { name: 'Контент' }));
+    expect(nav.getByRole('link', { name: 'Новости сайта' })).toBeVisible();
+    fireEvent.click(nav.getByRole('button', { name: 'Мониторинг' }));
     expect(nav.getByRole('button', { name: 'Мониторинг' })).toHaveAttribute(
       'aria-expanded',
       'true',
