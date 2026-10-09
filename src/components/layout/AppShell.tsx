@@ -24,6 +24,8 @@ const routeLabels: Record<string, string> = {
   monitor: 'Мониторинг',
   notifications: 'Уведомления',
   help: 'Справка',
+  site: 'Сайт',
+  news: 'Новости',
 };
 
 export function AppShell() {

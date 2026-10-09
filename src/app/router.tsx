@@ -9,6 +9,7 @@ import { ReportDetailsPage } from '../pages/ReportDetailsPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import { StaffPage } from '../pages/StaffPage';
 import { SystemPage } from '../pages/SystemPage';
+import { SiteNewsPage } from '../pages/SiteNewsPage';
 import { UserDetailsPage } from '../pages/UserDetailsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: '/admin/security', element: <SecurityPage /> },
       { path: '/admin/audit', element: <AuditPage /> },
       { path: '/admin/system', element: <SystemPage /> },
+      { path: '/admin/site/news', element: <SiteNewsPage /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
     ],
   },

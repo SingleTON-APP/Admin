@@ -6,6 +6,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:11001',
+      '/site-api': {
+        target: 'http://localhost:3001',
+        rewrite: (path) => path.replace(/^\/site-api/, '/api'),
+      },
     },
   },
   test: {

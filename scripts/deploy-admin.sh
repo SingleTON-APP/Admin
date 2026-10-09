@@ -49,6 +49,9 @@ compose up -d --wait --wait-timeout 60 || rollback
 if ! curl --fail --silent --show-error --max-time 15 "http://127.0.0.1:$port/api/admin/auth/session" | python3 -c 'import json,sys; v=json.load(sys.stdin); assert isinstance(v.get("gateAuthenticated"), bool) and isinstance(v.get("csrfToken"), str)'; then
   rollback
 fi
+if ! curl --fail --silent --show-error --max-time 15 "http://127.0.0.1:$port/site-api/healthz" | python3 -c 'import json,sys; assert json.load(sys.stdin).get("status") == "ok"'; then
+  rollback
+fi
 if [[ "$project" == singleton-admin-prod ]]; then
   # Verify the real HTTPS route without bypassing TLS certificate checks.
   if ! curl --fail --silent --show-error --max-time 15 'https://admin.hub-net.org/api/admin/auth/session' | python3 -c 'import json,sys; v=json.load(sys.stdin); assert isinstance(v.get("gateAuthenticated"), bool) and isinstance(v.get("csrfToken"), str)'; then

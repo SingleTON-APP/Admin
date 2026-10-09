@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_ORIGIN: ${BACKEND_ORIGIN:?BACKEND_ORIGIN required}
+      SITE_BACKEND_ORIGIN: ${SITE_BACKEND_ORIGIN:?SITE_BACKEND_ORIGIN required}
     ports:
       - 127.0.0.1:${ADMIN_HOST_PORT:?ADMIN_HOST_PORT required}:8080
     networks:
