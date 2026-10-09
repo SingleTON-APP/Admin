@@ -95,6 +95,7 @@ jobs:
           start_backend 172.30.241.10 first
           docker run --detach --name admin-ci-dns --network "$network" \
             --env BACKEND_ORIGIN=http://admin-ci-backend:5555 \
+            --env SITE_BACKEND_ORIGIN=http://admin-ci-backend:5555 \
             --publish 127.0.0.1:18081:8080 singleton-admin:ci
           uri='/api/admin/auth/session?probe=one%20two&next=%2Fadmin'
           expect_response() {
