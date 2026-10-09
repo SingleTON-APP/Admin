@@ -107,6 +107,7 @@ export interface GroupDetails {
   group: ReportGroup;
   reports: Report[];
   decisions: GroupDecision[];
+  hasMore?: boolean;
 }
 export interface Appeal {
   id: string;
@@ -219,6 +220,7 @@ export const operationsService = {
       reportIds: string[];
       action: GroupDecision['action'];
       reason: string;
+      publicReason?: string;
       idempotencyKey: string;
     },
   ) =>

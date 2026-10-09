@@ -174,11 +174,15 @@ function GroupBoard({ id }: { id: string }) {
     key: string;
   } | null>(null);
   const [reason, setReason] = useState('');
+  const [publicReason, setPublicReason] = useState('');
+  const publicReasonValid =
+    !publicReason.trim() || publicReason.trim().length >= 10;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!pending || busy || reason.trim().length < 10) return;
+    if (!pending || busy || reason.trim().length < 10 || !publicReasonValid)
+      return;
     setBusy(true);
     setError('');
     try {
@@ -186,10 +190,12 @@ function GroupBoard({ id }: { id: string }) {
         reportIds: pending.ids,
         action: pending.action,
         reason: reason.trim(),
+        ...(publicReason.trim() ? { publicReason: publicReason.trim() } : {}),
         idempotencyKey: pending.key,
       });
       setPending(null);
       setReason('');
+      setPublicReason('');
       setSelected([]);
       setReload((value) => value + 1);
     } catch (failure) {
@@ -236,6 +242,12 @@ function GroupBoard({ id }: { id: string }) {
               {reportTargetLabel[state.data.group.targetType]} ·{' '}
               {state.data.group.count} жалоб
             </h2>
+            {state.data.hasMore && (
+              <p className="coverage-warning">
+                Показаны 100 жалоб; сначала открытые. После решения обновите
+                группу, чтобы разобрать остальные.
+              </p>
+            )}
             <details>
               <summary>Идентификатор объекта</summary>
               <code>{state.data.group.targetId}</code>
@@ -306,6 +318,7 @@ function GroupBoard({ id }: { id: string }) {
                       key: crypto.randomUUID(),
                     });
                     setReason('');
+                    setPublicReason('');
                     setError('');
                   }}
                 >
@@ -367,10 +380,26 @@ function GroupBoard({ id }: { id: string }) {
               disabled={busy}
             />
           </label>
+          <label>
+            Объяснение пользователю
+            <textarea
+              minLength={10}
+              maxLength={1000}
+              value={publicReason}
+              onChange={(event) => setPublicReason(event.target.value)}
+              disabled={busy}
+              aria-describedby="group-public-reason-help"
+            />
+          </label>
+          <p id="group-public-reason-help" className="data-note">
+            Необязательно · {publicReason.length} / 1000 символов. Если
+            заполнено, минимум 10 символов. Это объяснение увидит пользователь;
+            внутреннее основание решения в него не подставляется.
+          </p>
           {error && pending && <p role="alert">{error}</p>}
           <button
             className="button primary"
-            disabled={busy || reason.trim().length < 10}
+            disabled={busy || reason.trim().length < 10 || !publicReasonValid}
           >
             {busy ? 'Применение…' : 'Подтвердить решение'}
           </button>

@@ -85,6 +85,54 @@ const group: GroupDetails = {
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 describe('operations safety and meaningful controls', () => {
+  it('separates the user explanation from the internal reason and shows truncated groups', async () => {
+    vi.spyOn(operationsService, 'group').mockResolvedValue({
+      ...group,
+      hasMore: true,
+    });
+    const decide = vi
+      .spyOn(operationsService, 'decide')
+      .mockResolvedValue({
+        success: true,
+        decisionId: 'decision',
+        reportIds: ['report-1'],
+        repeated: false,
+      });
+    mount(
+      <ReportGroupDetailsPage />,
+      '/admin/report-groups/group-1',
+      '/admin/report-groups/:id',
+    );
+    await screen.findByText(/Показаны 100 жалоб; сначала открытые/);
+    fireEvent.click(screen.getByLabelText('Выбрать жалобу report-1'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Завершить выбранные' }),
+    );
+    fireEvent.change(screen.getByLabelText('Основание решения'), {
+      target: { value: 'Внутренняя проверка по закрытым данным' },
+    });
+    fireEvent.change(screen.getByLabelText('Объяснение пользователю'), {
+      target: { value: 'Коротко' },
+    });
+    expect(
+      screen.getByRole('button', { name: 'Подтвердить решение' }),
+    ).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Объяснение пользователю'), {
+      target: { value: 'Нарушение правил подтверждено проверкой' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Подтвердить решение' }),
+    );
+    await waitFor(() =>
+      expect(decide).toHaveBeenCalledWith(
+        'group-1',
+        expect.objectContaining({
+          reason: 'Внутренняя проверка по закрытым данным',
+          publicReason: 'Нарушение правил подтверждено проверкой',
+        }),
+      ),
+    );
+  });
   it('accepts a recovery code to disable TOTP without weakening setup confirmation', async () => {
     vi.spyOn(operationsService, 'sessions').mockResolvedValue({
       items: [],
@@ -315,6 +363,7 @@ describe('operations safety and meaningful controls', () => {
     );
     await waitFor(() => expect(decide).toHaveBeenCalledTimes(2));
     expect(decide.mock.calls[0]?.[1].reportIds).toEqual(['report-1']);
+    expect(decide.mock.calls[0]?.[1]).not.toHaveProperty('publicReason');
     expect(decide.mock.calls[1]?.[1].idempotencyKey).toBe(
       decide.mock.calls[0]?.[1].idempotencyKey,
     );
