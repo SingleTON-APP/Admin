@@ -22,8 +22,8 @@ Environment variables (GitHub environment Variables) override the defaults:
 | Variable                  | Default / meaning                                                                                          |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | ADMIN_HOST_PORT           | Production: user-selected 12228. Development must specify its own free port.                               |
-| ADMIN_BACKEND_ORIGIN      | http://hub-backend-prod:5555 / http://hub-backend-dev:5555, matching Back-Hub compose.                     |
-| ADMIN_SITE_BACKEND_ORIGIN | http://hub-website-prod:3001 / http://hub-website-dev:3001, the content service on the shared Hub network. |
+| ADMIN_BACKEND_UPSTREAM      | hub-backend-prod:5555 / hub-backend-dev:5555, matching Back-Hub compose.                     |
+| ADMIN_SITE_BACKEND_UPSTREAM | hub-website-prod:3001 / hub-website-dev:3001, the content service on the shared Hub network. |
 | SITE_PUBLIC_URL           | Website opened from the content editor; defaults to https://hub-net.org.                                   |
 | ADMIN_DOCKER_NETWORK      | hub-prod-net / hub-dev-net, matching the existing backend workflows.                                       |
 

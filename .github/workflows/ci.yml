@@ -44,7 +44,7 @@ jobs:
         run: |
           set -eu
           docker build --build-arg VITE_API_URL=/api --build-arg VITE_SITE_API_URL=/site-api --build-arg VITE_SITE_MEDIA_URL=/site-api -t singleton-admin:ci .
-          docker run --detach --name admin-ci --env BACKEND_ORIGIN=http://127.0.0.1:1 --env SITE_BACKEND_ORIGIN=http://127.0.0.1:1 --publish 127.0.0.1:18080:8080 singleton-admin:ci
+          docker run --detach --name admin-ci --env BACKEND_UPSTREAM=127.0.0.1:1 --env SITE_BACKEND_UPSTREAM=127.0.0.1:1 --publish 127.0.0.1:18080:8080 singleton-admin:ci
           trap 'docker logs admin-ci; docker rm --force admin-ci' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then
@@ -94,8 +94,8 @@ jobs:
           }
           start_backend 172.30.241.10 first
           docker run --detach --name admin-ci-dns --network "$network" \
-            --env BACKEND_ORIGIN=http://admin-ci-backend:5555 \
-            --env SITE_BACKEND_ORIGIN=http://admin-ci-backend:5555 \
+            --env BACKEND_UPSTREAM=admin-ci-backend:5555 \
+            --env SITE_BACKEND_UPSTREAM=admin-ci-backend:5555 \
             --publish 127.0.0.1:18081:8080 singleton-admin:ci
           uri='/api/admin/auth/session?probe=one%20two&next=%2Fadmin'
           expect_response() {

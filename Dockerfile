@@ -16,11 +16,11 @@ ENV VITE_SITE_PUBLIC_URL=$VITE_SITE_PUBLIC_URL
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.28-alpine AS runtime
-ENV NGINX_ENVSUBST_FILTER="^(BACKEND_ORIGIN|SITE_BACKEND_ORIGIN)$"
+ENV NGINX_ENVSUBST_FILTER="^(BACKEND_UPSTREAM|SITE_BACKEND_UPSTREAM)$"
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 USER root
 RUN apk add --no-cache ca-certificates && update-ca-certificates
-RUN printf '%s\n' '#!/bin/sh' 'set -eu' ': "${BACKEND_ORIGIN:?BACKEND_ORIGIN must be set to the Back-Hub origin}"' ': "${SITE_BACKEND_ORIGIN:?SITE_BACKEND_ORIGIN must be set to the website content origin}"' 'for origin in "$BACKEND_ORIGIN" "$SITE_BACKEND_ORIGIN"; do printf "%s" "$origin" | grep -Eq "^https?://[A-Za-z0-9.-]+(:[0-9]+)?$" || { echo "Backend origins must be HTTP(S) origins without a path" >&2; exit 1; }; done' > /docker-entrypoint.d/19-require-backend.sh \
+RUN printf '%s\n' '#!/bin/sh' 'set -eu' ': "${BACKEND_UPSTREAM:?BACKEND_UPSTREAM must be set to the Back-Hub host:port}"' ': "${SITE_BACKEND_UPSTREAM:?SITE_BACKEND_UPSTREAM must be set to the website host:port}"' 'for upstream in "$BACKEND_UPSTREAM" "$SITE_BACKEND_UPSTREAM"; do printf "%s" "$upstream" | grep -Eq "^[A-Za-z0-9.-]+:[0-9]+$" || { echo "Backend upstreams must use host:port format" >&2; exit 1; }; done' > /docker-entrypoint.d/19-require-backend.sh \
     && chmod +x /docker-entrypoint.d/19-require-backend.sh
 USER 101
 COPY --from=build /app/dist /usr/share/nginx/html
