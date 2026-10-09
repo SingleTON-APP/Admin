@@ -32,6 +32,39 @@ function PrivatePanel() {
 }
 describe('Admin access boundary', () => {
   beforeEach(() => vi.resetAllMocks());
+  it('keeps private UI closed for a TOTP challenge and accepts a backup code', async () => {
+    vi.mocked(adminAuthService.session).mockResolvedValue(accepted);
+    vi.mocked(adminAuthService.login)
+      .mockResolvedValueOnce({ ...accepted, requiresTotp: true })
+      .mockResolvedValue(authorized);
+    render(
+      <AdminAccessBoundary>
+        <PrivatePanel />
+      </AdminAccessBoundary>,
+    );
+    fireEvent.change(await screen.findByLabelText('Логин'), {
+      target: { value: 'root' },
+    });
+    fireEvent.change(screen.getByLabelText('Пароль сотрудника'), {
+      target: { value: 'personal-secret' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await screen.findByText('Введите код из приложения-аутентификатора.');
+    expect(screen.queryByText('Приватный контекст')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Пароль сотрудника')).toHaveValue(
+      'personal-secret',
+    );
+    fireEvent.change(screen.getByLabelText(/Код 2FA или резервный код/), {
+      target: { value: 'aaaaaaaa-bbbbbbbb-cccccccc-dddddddd' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }));
+    await screen.findByText('Приватный контекст');
+    expect(adminAuthService.login).toHaveBeenLastCalledWith(
+      'root',
+      'personal-secret',
+      'aaaaaaaa-bbbbbbbb-cccccccc-dddddddd',
+    );
+  });
   it('does not mount private content before both gates pass', async () => {
     vi.mocked(adminAuthService.session).mockResolvedValue(gate);
     vi.mocked(adminAuthService.gate).mockResolvedValue(accepted);

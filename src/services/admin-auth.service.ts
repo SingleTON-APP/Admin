@@ -4,6 +4,7 @@ export interface AdminSession {
   gateAuthenticated: boolean;
   actor: StaffIdentity | null;
   csrfToken: string;
+  requiresTotp?: boolean;
 }
 export interface AdminAccount {
   id: string;
@@ -11,6 +12,7 @@ export interface AdminAccount {
   userId: string;
   role: StaffRole;
   disabled: boolean;
+  totpEnabled?: boolean;
 }
 async function sessionRequest(path: string, init?: RequestInit) {
   const session = await request<AdminSession>(`/admin/auth/${path}`, init);
@@ -26,12 +28,16 @@ export const adminAuthService = {
     });
     return sessionRequest('session');
   },
-  login: async (username: string, password: string) => {
-    await request('/admin/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-    });
-    return sessionRequest('session');
+  login: async (username: string, password: string, code?: string) => {
+    const result = await request<{ requiresTotp?: boolean }>(
+      '/admin/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ username, password, ...(code ? { code } : {}) }),
+      },
+    );
+    const session = await sessionRequest('session');
+    return result?.requiresTotp ? { ...session, requiresTotp: true } : session;
   },
   logout: () => request<void>('/admin/auth/logout', { method: 'POST' }),
   staff: (signal?: AbortSignal) =>
@@ -60,5 +66,10 @@ export const adminAuthService = {
     request<void>('/admin/auth/shared-password', {
       method: 'POST',
       body: JSON.stringify({ password }),
+    }),
+  resetTotp: (id: string, password: string, reason: string) =>
+    request(`/admin/auth/staff/${encodeURIComponent(id)}/totp/reset`, {
+      method: 'POST',
+      body: JSON.stringify({ password, reason }),
     }),
 };

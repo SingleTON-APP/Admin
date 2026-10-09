@@ -28,6 +28,57 @@ export const router = createBrowserRouter([
       { path: '/admin/monitor', element: <MonitorPage /> },
       { path: '/admin/notifications', element: <NotificationsPage /> },
       { path: '/admin/help', element: <HelpPage /> },
+      {
+        path: '/admin/history',
+        lazy: async () => ({
+          Component: (await import('../pages/HistoryPage')).HistoryPage,
+        }),
+      },
+      {
+        path: '/admin/call-quality',
+        lazy: async () => ({
+          Component: (await import('../pages/CallQualityPage')).CallQualityPage,
+        }),
+      },
+      {
+        path: '/admin/thresholds',
+        lazy: async () => ({
+          Component: (await import('../pages/ThresholdsPage')).ThresholdsPage,
+        }),
+      },
+      {
+        path: '/admin/access',
+        lazy: async () => ({
+          Component: (await import('../pages/AccessSecurityPage'))
+            .AccessSecurityPage,
+        }),
+      },
+      {
+        path: '/admin/report-groups',
+        lazy: async () => ({
+          Component: (await import('../pages/ReportGroupsPage'))
+            .ReportGroupsPage,
+        }),
+      },
+      {
+        path: '/admin/report-groups/:id',
+        lazy: async () => ({
+          Component: (await import('../pages/ReportGroupsPage'))
+            .ReportGroupDetailsPage,
+        }),
+      },
+      {
+        path: '/admin/appeals',
+        lazy: async () => ({
+          Component: (await import('../pages/AppealsPage')).AppealsPage,
+        }),
+      },
+      {
+        path: '/admin/appeals/:id',
+        lazy: async () => ({
+          Component: (await import('../pages/AppealsPage')).AppealDetailsPage,
+        }),
+      },
       { path: '/admin/users', element: <UsersPage /> },
       { path: '/admin/users/:id', element: <UserDetailsPage /> },
       { path: '/admin/reports', element: <ReportsPage /> },

@@ -54,11 +54,19 @@ const number = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value)
     ? '—'
     : value.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
-const time = (value: string) =>
-  new Date(value).toLocaleTimeString('ru-RU', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+const time = (value: string, history = false) =>
+  history
+    ? new Date(value).toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC',
+      })
+    : new Date(value).toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
 const authSourceStatus: Record<string, string> = {
   UNKNOWN: 'проверка источника ещё не выполнена',
   UNCONFIGURED: 'источник не настроен',
@@ -71,10 +79,12 @@ export function ProcessComparison({
   operations,
   selected,
   quantile,
+  history = false,
 }: {
   operations: ProcessOperation[];
   selected: string[];
   quantile: 'p50Ms' | 'p95Ms';
+  history?: boolean;
 }) {
   const chosen = operations.filter((operation) =>
     selected.includes(operation.id),
@@ -159,7 +169,7 @@ export function ProcessComparison({
                   r="3"
                 >
                   <title>
-                    {title(operation.id)} · {time(point.timestamp)} ·{' '}
+                    {title(operation.id)} · {time(point.timestamp, history)} ·{' '}
                     {number(point[quantile])} мс · {point.durationSamples}{' '}
                     замеров
                   </title>
@@ -189,7 +199,7 @@ export function ProcessComparison({
           }
           className="chart-tick"
         >
-          {time(timestamps[index]!)}
+          {time(timestamps[index]!, history)}
         </text>
       ))}
     </svg>
@@ -198,8 +208,10 @@ export function ProcessComparison({
 
 export function ProcessMetricsPanel({
   snapshot,
+  history = false,
 }: {
   snapshot: ProcessSnapshot;
+  history?: boolean;
 }) {
   const [selected, setSelected] = useState([
     'login.server',
@@ -214,8 +226,9 @@ export function ProcessMetricsPanel({
   return (
     <div className="process-panel">
       <p className="data-note">
-        Реальные замеры по минутам. p50 — обычная задержка, p95 — граница для
-        95% замеров, оценённая по корзинам гистограммы. Время в миллисекундах.
+        Реальные замеры {history ? 'по часам · UTC' : 'по минутам'}. p50 —
+        обычная задержка, p95 — граница для 95% замеров, оценённая по корзинам
+        гистограммы. Время в миллисекундах.
       </p>
       {auth && auth.status !== 'AVAILABLE' && (
         <p className="health-stale" role="status">
@@ -267,6 +280,7 @@ export function ProcessMetricsPanel({
         operations={snapshot.operations}
         selected={selected}
         quantile={quantile}
+        history={history}
       />
       <div className="process-summary">
         {snapshot.operations.map((operation) => (
@@ -324,12 +338,12 @@ export function ProcessMetricsPanel({
         ))}
       </div>
       <details className="chart-data">
-        <summary>Точные значения по минутам</summary>
+        <summary>Точные значения {history ? 'по часам' : 'по минутам'}</summary>
         <div className="chart-table-wrap">
           <table>
             <caption>
-              Только минуты с операциями; пустые интервалы означают отсутствие
-              замеров
+              Только интервалы с операциями; пустые интервалы означают
+              отсутствие замеров
             </caption>
             <thead>
               <tr>
@@ -347,7 +361,7 @@ export function ProcessMetricsPanel({
                   .filter((point) => point.count > 0)
                   .map((point) => (
                     <tr key={`${operation.id}-${point.timestamp}`}>
-                      <td>{time(point.timestamp)}</td>
+                      <td>{time(point.timestamp, history)}</td>
                       <th scope="row">{title(operation.id)}</th>
                       <td>{point.count}</td>
                       <td>{point.errors}</td>
@@ -361,8 +375,9 @@ export function ProcessMetricsPanel({
         </div>
       </details>
       <p className="data-note">
-        Окно до 60 минут, данные текущего экземпляра сервера. Перезапуск очищает
-        замеры процессов; история жалоб и уведомлений хранится в базе. Начало
+        {history
+          ? 'Почасовая история сохранена в базе; p95 получен объединением гистограмм, а не усреднением процентилей. Начало'
+          : 'Окно до 60 минут, данные текущего экземпляра сервера. Перезапуск очищает оперативные замеры процессов; долговременная история хранится в базе. Начало'}
         сбора: {new Date(snapshot.startedAt).toLocaleString('ru-RU')}. Значения
         этапов могут перекрываться: складывать их нельзя.
       </p>
