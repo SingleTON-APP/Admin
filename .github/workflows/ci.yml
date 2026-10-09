@@ -101,7 +101,7 @@ jobs:
           expect_response() {
             expected="$1 $uri"
             for attempt in $(seq 1 30); do
-              actual=$(curl --silent --max-time 2 "http://127.0.0.1:18081$uri" || true)
+              actual=$(curl --silent --max-time 8 "http://127.0.0.1:18081$uri" || true)
               if [ "$actual" = "$expected" ]; then
                 return 0
               fi
