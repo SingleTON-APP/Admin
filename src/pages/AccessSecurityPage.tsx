@@ -165,6 +165,7 @@ function TotpSettings({
   onChanged: () => void;
   onRecoveryPending: (pending: boolean) => void;
 }) {
+  const logout = useAdminLogout();
   const [setup, setSetup] = useState<{
     secret: string;
     otpauthUrl: string;
@@ -200,11 +201,13 @@ function TotpSettings({
           const result = await operationsService.confirmTotp(code);
           setRecoveryCodes(result.recoveryCodes);
           onRecoveryPending(true);
-        } else await operationsService.disableTotp(password, code);
+        } else {
+          await operationsService.disableTotp(password, code);
+          await logout(true);
+        }
         setSetup(null);
         setCode('');
         setPassword('');
-        if (action !== 'confirm') onChanged();
       }
     } catch (failure) {
       setError(

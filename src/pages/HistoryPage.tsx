@@ -150,8 +150,9 @@ function HistoryBoard({ days }: { days: 7 | 30 }) {
             <div className="operations-scroll">
               <table>
                 <caption>
-                  Почасовые проверки · UTC. UNKNOWN означает неизвестное
-                  состояние.
+                  Почасовые выборки · UTC. В минуте сохраняется последняя
+                  проверка; час показывает худшее сохранённое состояние и
+                  среднюю задержку. UNKNOWN означает неизвестное состояние.
                 </caption>
                 <thead>
                   <tr>
@@ -159,7 +160,7 @@ function HistoryBoard({ days }: { days: 7 | 30 }) {
                     <th>Время</th>
                     <th>Состояние</th>
                     <th>Задержка, мс</th>
-                    <th>Проверки / сбои</th>
+                    <th>Минутные выборки / DOWN</th>
                   </tr>
                 </thead>
                 <tbody>
