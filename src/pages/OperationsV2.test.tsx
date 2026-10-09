@@ -85,6 +85,34 @@ const group: GroupDetails = {
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 describe('operations safety and meaningful controls', () => {
+  it('accepts a recovery code to disable TOTP without weakening setup confirmation', async () => {
+    vi.spyOn(operationsService, 'sessions').mockResolvedValue({
+      items: [],
+      totpEnabled: true,
+      totpConfigured: true,
+    });
+    const disable = vi
+      .spyOn(operationsService, 'disableTotp')
+      .mockResolvedValue({});
+    mount(<AccessSecurityPage />);
+    const code = await screen.findByLabelText('Код 2FA или резервный код');
+    fireEvent.change(screen.getByLabelText('Личный пароль сотрудника'), {
+      target: { value: 'personal-password' },
+    });
+    fireEvent.change(code, {
+      target: { value: '12345678-12345678-12345678-12345678' },
+    });
+    expect(code).not.toHaveAttribute('pattern');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Отключить двухфакторную защиту' }),
+    );
+    await waitFor(() =>
+      expect(disable).toHaveBeenCalledWith(
+        'personal-password',
+        '12345678-12345678-12345678-12345678',
+      ),
+    );
+  });
   it('loads durable incidents independently of failed service history and labels sampled duration', async () => {
     const coverage = {
       from: '2026-10-02T00:00:00Z',

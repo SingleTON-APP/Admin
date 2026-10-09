@@ -320,15 +320,13 @@ function TotpSettings({
           </label>
           {security.totpEnabled && (
             <label>
-              Текущий код
+              Код 2FA или резервный код
               <input
-                inputMode="numeric"
                 autoComplete="one-time-code"
-                pattern="[0-9]{6}"
                 required
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
-                maxLength={6}
+                maxLength={64}
                 disabled={busy}
               />
             </label>
@@ -336,9 +334,7 @@ function TotpSettings({
           <button
             className={`button ${security.totpEnabled ? 'danger' : 'primary'}`}
             disabled={
-              busy ||
-              !password ||
-              (security.totpEnabled && !/^\d{6}$/.test(code))
+              busy || !password || (security.totpEnabled && !code.trim())
             }
           >
             {security.totpEnabled
