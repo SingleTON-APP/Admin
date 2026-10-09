@@ -30,7 +30,9 @@ jobs:
       SSHPASS: ${{ secrets[format('{0}_SSH_PASSWORD', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
       SSH_KNOWN_HOSTS: ${{ secrets[format('{0}_SSH_KNOWN_HOSTS', (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'PROD' || 'DEV')] }}
       ADMIN_HOST_PORT: ${{ vars.ADMIN_HOST_PORT || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && '12228' || '') }}
-      BACKEND_ORIGIN: ${{ vars.ADMIN_BACKEND_ORIGIN || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'http://hub-backend-prod:5555' || 'http://hub-backend-dev:5555') }}
+      BACKEND_UPSTREAM: ${{ vars.ADMIN_BACKEND_UPSTREAM || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'hub-backend-prod:5555' || 'hub-backend-dev:5555') }}
+      SITE_BACKEND_UPSTREAM: ${{ vars.ADMIN_SITE_BACKEND_UPSTREAM || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'hub-website-prod:3001' || 'hub-website-dev:3001') }}
+      SITE_PUBLIC_URL: ${{ vars.SITE_PUBLIC_URL || 'https://hub-net.org' }}
       ADMIN_NETWORK: ${{ vars.ADMIN_DOCKER_NETWORK || ((github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'hub-prod-net' || 'hub-dev-net') }}
       DEPLOY_TIER: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'main' && 'prod' || 'dev' }}
       DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
@@ -44,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for name in SSH_HOST SSH_PORT SSH_USER SSHPASS SSH_KNOWN_HOSTS ADMIN_HOST_PORT BACKEND_ORIGIN ADMIN_NETWORK DOCKER_HUB_USERNAME DOCKER_HUB_PASSWORD IMAGE_REPOSITORY; do
+          for name in SSH_HOST SSH_PORT SSH_USER SSHPASS SSH_KNOWN_HOSTS ADMIN_HOST_PORT BACKEND_UPSTREAM SITE_BACKEND_UPSTREAM SITE_PUBLIC_URL ADMIN_NETWORK DOCKER_HUB_USERNAME DOCKER_HUB_PASSWORD IMAGE_REPOSITORY; do
             if [[ -z "${!name}" ]]; then echo "::error::Missing $name; configure Admin environment before deployment"; exit 1; fi
           done
           [[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]]
@@ -52,7 +54,9 @@ jobs:
           (( SSH_PORT >= 1 && SSH_PORT <= 65535 && ADMIN_HOST_PORT >= 1024 && ADMIN_HOST_PORT <= 65535 ))
           [[ "$SSH_USER" =~ ^[a-zA-Z0-9_-]+$ && "$SSH_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
           [[ "$ADMIN_NETWORK" =~ ^[a-zA-Z0-9_.-]+$ ]]
-          [[ "$BACKEND_ORIGIN" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]{1,5})?$ ]]
+          [[ "$BACKEND_UPSTREAM" =~ ^[a-zA-Z0-9.-]+:[0-9]{1,5}$ ]]
+          [[ "$SITE_BACKEND_UPSTREAM" =~ ^[a-zA-Z0-9.-]+:[0-9]{1,5}$ ]]
+          [[ "$SITE_PUBLIC_URL" =~ ^https?://[a-zA-Z0-9.-]+(:[0-9]{1,5})?(/.*)?$ ]]
           [[ "$DOCKER_HUB_USERNAME" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
           [[ "$IMAGE_REPOSITORY" =~ ^[a-z0-9][a-z0-9_.-]*/[a-z0-9][a-z0-9_.-]*$ ]]
       - uses: actions/setup-node@v4
@@ -75,7 +79,7 @@ jobs:
       - name: Build and publish the verified frontend image
         run: |
           image="$IMAGE_REPOSITORY:$DEPLOY_TIER-$DEPLOY_SHA"
-          docker build --build-arg VITE_API_URL=/api -t "$image" .
+          docker build --build-arg VITE_API_URL=/api --build-arg VITE_SITE_API_URL=/site-api --build-arg VITE_SITE_MEDIA_URL=/site-api --build-arg VITE_SITE_PUBLIC_URL="$SITE_PUBLIC_URL" -t "$image" .
           docker push "$image"
       - name: Prepare verified SSH connection
         run: |
@@ -104,7 +108,7 @@ jobs:
           remote_docker_login() {
             printf '%s\n' "$DOCKER_HUB_PASSWORD" | sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "docker login --username '$DOCKER_HUB_USERNAME' --password-stdin"
           }
-          printf 'ADMIN_IMAGE=%s\nADMIN_HOST_PORT=%s\nBACKEND_ORIGIN=%s\nADMIN_NETWORK=%s\n' "$image" "$ADMIN_HOST_PORT" "$BACKEND_ORIGIN" "$ADMIN_NETWORK" > admin-release.env
+          printf 'ADMIN_IMAGE=%s\nADMIN_HOST_PORT=%s\nBACKEND_UPSTREAM=%s\nSITE_BACKEND_UPSTREAM=%s\nADMIN_NETWORK=%s\n' "$image" "$ADMIN_HOST_PORT" "$BACKEND_UPSTREAM" "$SITE_BACKEND_UPSTREAM" "$ADMIN_NETWORK" > admin-release.env
           retry_safe_transfer sshpass -e ssh "${ssh_options[@]}" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$target/releases/$DEPLOY_SHA'"
           retry_safe_transfer sshpass -e scp "${ssh_options[@]}" -P "$SSH_PORT" admin-release.env docker-compose.yml scripts/deploy-admin.sh "$SSH_USER@$SSH_HOST:$target/releases/$DEPLOY_SHA/"
           retry_safe_transfer remote_docker_login

@@ -6,15 +6,21 @@ COPY . .
 # Vite substitutes this public URL into the browser bundle at build time.
 # Credentials and private configuration must never be passed as VITE_* values.
 ARG VITE_API_URL=/api
+ARG VITE_SITE_API_URL=/site-api
+ARG VITE_SITE_MEDIA_URL=/site-api
+ARG VITE_SITE_PUBLIC_URL=https://hub-net.org
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SITE_API_URL=$VITE_SITE_API_URL
+ENV VITE_SITE_MEDIA_URL=$VITE_SITE_MEDIA_URL
+ENV VITE_SITE_PUBLIC_URL=$VITE_SITE_PUBLIC_URL
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.28-alpine AS runtime
-ENV NGINX_ENVSUBST_FILTER="^BACKEND_ORIGIN$"
+ENV NGINX_ENVSUBST_FILTER="^(BACKEND_UPSTREAM|SITE_BACKEND_UPSTREAM)$"
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 USER root
 RUN apk add --no-cache ca-certificates && update-ca-certificates
-RUN printf '%s\n' '#!/bin/sh' 'set -eu' ': "${BACKEND_ORIGIN:?BACKEND_ORIGIN must be set to the Back-Hub origin}"' 'printf "%s" "$BACKEND_ORIGIN" | grep -Eq "^https?://[A-Za-z0-9.-]+(:[0-9]+)?$" || { echo "BACKEND_ORIGIN must be an HTTP(S) origin without a path" >&2; exit 1; }' > /docker-entrypoint.d/19-require-backend.sh \
+RUN printf '%s\n' '#!/bin/sh' 'set -eu' ': "${BACKEND_UPSTREAM:?BACKEND_UPSTREAM must be set to the Back-Hub host:port}"' ': "${SITE_BACKEND_UPSTREAM:?SITE_BACKEND_UPSTREAM must be set to the website host:port}"' 'for upstream in "$BACKEND_UPSTREAM" "$SITE_BACKEND_UPSTREAM"; do printf "%s" "$upstream" | grep -Eq "^[A-Za-z0-9.-]+:[0-9]+$" || { echo "Backend upstreams must use host:port format" >&2; exit 1; }; done' > /docker-entrypoint.d/19-require-backend.sh \
     && chmod +x /docker-entrypoint.d/19-require-backend.sh
 USER 101
 COPY --from=build /app/dist /usr/share/nginx/html

@@ -4,7 +4,7 @@ export interface NavigationItem {
   path: string;
   title: string;
   group: string;
-  icon: 'overview' | 'shield' | 'users' | 'lock' | 'system';
+  icon: 'overview' | 'shield' | 'users' | 'lock' | 'system' | 'file';
   roles?: StaffRole[];
 }
 
@@ -83,6 +83,13 @@ export const navigation: NavigationItem[] = [
     title: 'Пользователи',
     group: 'Пользователи',
     icon: 'users',
+  },
+  {
+    path: '/admin/site/news',
+    title: 'Новости сайта',
+    group: 'Контент',
+    icon: 'file',
+    roles: managers,
   },
   {
     path: '/admin/staff',

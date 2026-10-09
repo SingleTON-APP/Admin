@@ -9,6 +9,9 @@ let adminCsrf = '';
 export function setAdminCsrf(token: string) {
   adminCsrf = token;
 }
+export function getAdminCsrf() {
+  return adminCsrf;
+}
 export const ADMIN_ACCESS_EXPIRED = 'admin-access-expired';
 
 function delay(ms: number, signal?: AbortSignal | null) {

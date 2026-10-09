@@ -31,6 +31,8 @@ const routeLabels: Record<string, string> = {
   access: 'Мои сессии и 2FA',
   'report-groups': 'Группы жалоб',
   appeals: 'Апелляции',
+  site: 'Сайт',
+  news: 'Новости',
 };
 
 export function AppShell() {

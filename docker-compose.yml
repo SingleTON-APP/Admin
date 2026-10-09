@@ -3,7 +3,8 @@ services:
     image: ${ADMIN_IMAGE:?ADMIN_IMAGE required}
     restart: unless-stopped
     environment:
-      BACKEND_ORIGIN: ${BACKEND_ORIGIN:?BACKEND_ORIGIN required}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?BACKEND_UPSTREAM required}
+      SITE_BACKEND_UPSTREAM: ${SITE_BACKEND_UPSTREAM:?SITE_BACKEND_UPSTREAM required}
     ports:
       - 127.0.0.1:${ADMIN_HOST_PORT:?ADMIN_HOST_PORT required}:8080
     networks:

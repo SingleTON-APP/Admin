@@ -19,11 +19,13 @@ approval rules configured in GitHub. Feature/PR builds cannot deploy.
 
 Environment variables (GitHub environment Variables) override the defaults:
 
-| Variable             | Default / meaning                                                                      |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| ADMIN_HOST_PORT      | Production: user-selected 12228. Development must specify its own free port.           |
-| ADMIN_BACKEND_ORIGIN | http://hub-backend-prod:5555 / http://hub-backend-dev:5555, matching Back-Hub compose. |
-| ADMIN_DOCKER_NETWORK | hub-prod-net / hub-dev-net, matching the existing backend workflows.                   |
+| Variable                  | Default / meaning                                                                                          |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| ADMIN_HOST_PORT           | Production: user-selected 12228. Development must specify its own free port.                               |
+| ADMIN_BACKEND_UPSTREAM      | hub-backend-prod:5555 / hub-backend-dev:5555, matching Back-Hub compose.                     |
+| ADMIN_SITE_BACKEND_UPSTREAM | hub-website-prod:3001 / hub-website-dev:3001, the content service on the shared Hub network. |
+| SITE_PUBLIC_URL           | Website opened from the content editor; defaults to https://hub-net.org.                                   |
+| ADMIN_DOCKER_NETWORK      | hub-prod-net / hub-dev-net, matching the existing backend workflows.                                       |
 
 The server port is checked before replacing any container. An unrelated listener
 on the selected port aborts the release. Docker also enforces exclusive binding.
@@ -50,7 +52,8 @@ on success. No other application's container is removed.
 
 The server's public HTTPS virtual host must forward to the selected local Admin
 port. The container serves /admin and other React routes with SPA fallback;
-/api/* forwards to Back-Hub on the same browser origin. It never returns index
+/api/* forwards to Back-Hub and /site-api/* forwards to the website content
+service on the same browser origin. It never returns index
 HTML for a missing JS asset or failed API request. index.html has no-store,
 hashed assets have immutable caching.
 
@@ -75,6 +78,7 @@ the host nginx proxy instead of a replaceable Admin container address.
 ## Local development
 
 VITE_API_URL defaults to /api; Vite forwards /api to http://localhost:11001.
+The content editor uses /site-api, forwarded locally to http://localhost:3001.
 A published build never defaults to the visitor's localhost. Copy .env.example
 if desired. A different public API origin can be passed at build time but
 same-origin is recommended for HttpOnly SameSite=Strict admin cookies.

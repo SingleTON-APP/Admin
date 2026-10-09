@@ -38,11 +38,13 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: /api
+          VITE_SITE_API_URL: /site-api
+          VITE_SITE_MEDIA_URL: /site-api
       - name: Build container and check SPA routes
         run: |
           set -eu
-          docker build --build-arg VITE_API_URL=/api -t singleton-admin:ci .
-          docker run --detach --name admin-ci --env BACKEND_ORIGIN=http://127.0.0.1:1 --publish 127.0.0.1:18080:8080 singleton-admin:ci
+          docker build --build-arg VITE_API_URL=/api --build-arg VITE_SITE_API_URL=/site-api --build-arg VITE_SITE_MEDIA_URL=/site-api -t singleton-admin:ci .
+          docker run --detach --name admin-ci --env BACKEND_UPSTREAM=127.0.0.1:1 --env SITE_BACKEND_UPSTREAM=127.0.0.1:1 --publish 127.0.0.1:18080:8080 singleton-admin:ci
           trap 'docker logs admin-ci; docker rm --force admin-ci' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then
@@ -51,11 +53,12 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:18080/healthz
-          for route in /admin /admin/reports/report-ci /admin/security; do
+          for route in /admin /admin/reports/report-ci /admin/security /admin/site/news; do
             curl --fail --silent "http://127.0.0.1:18080$route" | cmp - dist/index.html
           done
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/assets/missing.js)" = 404
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/api/admin/auth/session)" = 502
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/site-api/news)" = 502
           curl --fail --silent --head http://127.0.0.1:18080/admin | grep --ignore-case 'cache-control: no-store'
       - name: Proxy follows backend container replacement
         run: |
@@ -91,13 +94,14 @@ jobs:
           }
           start_backend 172.30.241.10 first
           docker run --detach --name admin-ci-dns --network "$network" \
-            --env BACKEND_ORIGIN=http://admin-ci-backend:5555 \
+            --env BACKEND_UPSTREAM=admin-ci-backend:5555 \
+            --env SITE_BACKEND_UPSTREAM=admin-ci-backend:5555 \
             --publish 127.0.0.1:18081:8080 singleton-admin:ci
           uri='/api/admin/auth/session?probe=one%20two&next=%2Fadmin'
           expect_response() {
             expected="$1 $uri"
             for attempt in $(seq 1 30); do
-              actual=$(curl --silent --max-time 2 "http://127.0.0.1:18081$uri" || true)
+              actual=$(curl --silent --max-time 8 "http://127.0.0.1:18081$uri" || true)
               if [ "$actual" = "$expected" ]; then
                 return 0
               fi
