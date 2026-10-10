@@ -79,7 +79,7 @@ jobs:
       - name: Build and publish the verified frontend image
         run: |
           image="$IMAGE_REPOSITORY:$DEPLOY_TIER-$DEPLOY_SHA"
-          docker build --build-arg VITE_API_URL=/api --build-arg VITE_SITE_API_URL=/site-api --build-arg VITE_SITE_MEDIA_URL=/site-api --build-arg VITE_SITE_PUBLIC_URL="$SITE_PUBLIC_URL" -t "$image" .
+          docker build --label "org.opencontainers.image.revision=$DEPLOY_SHA" --build-arg VITE_API_URL=/api --build-arg VITE_SITE_API_URL=/site-api --build-arg VITE_SITE_MEDIA_URL=/site-api --build-arg VITE_SITE_PUBLIC_URL="$SITE_PUBLIC_URL" -t "$image" .
           docker push "$image"
       - name: Prepare verified SSH connection
         run: |
