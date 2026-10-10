@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from 'react';
 import { SITE_PUBLIC_URL } from '../api/site-client';
+import { Dialog } from '../components/ui/Dialog';
 import { SiteArticleEditor } from '../components/site-content/SiteArticleEditor';
 import {
   EmptyState,
@@ -41,6 +42,87 @@ function itemDraft(item: SiteNewsItem): SiteNewsDraft {
   };
 }
 
+function DeleteNewsDialog({
+  item,
+  saving,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  item: SiteNewsItem;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const [deadline] = useState(() => performance.now() + 5000);
+  const [remaining, setRemaining] = useState(5);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const seconds = Math.max(
+        0,
+        Math.ceil((deadline - performance.now()) / 1000),
+      );
+      setRemaining(seconds);
+      if (seconds === 0) window.clearInterval(timer);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [deadline]);
+  return (
+    <Dialog
+      open
+      title="Удалить новость?"
+      onClose={onClose}
+      dismissDisabled={saving}
+    >
+      <div className="form-stack">
+        <p>
+          Публикация «<strong>{item.title}</strong>» исчезнет с главного сайта и
+          из списка новостей. Отменить удаление не получится.
+        </p>
+        <p className="muted" role="status">
+          {remaining > 0
+            ? `Подтверждение станет доступно через ${remaining} сек.`
+            : 'Можно подтвердить удаление или отменить действие.'}
+        </p>
+        {error && (
+          <p
+            className="site-content-alert site-content-alert-error"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="button secondary"
+            onClick={onClose}
+            disabled={saving}
+            autoFocus
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            className="button danger"
+            disabled={saving || remaining > 0}
+            onClick={() => {
+              if (!saving && performance.now() >= deadline) onConfirm();
+            }}
+          >
+            {saving
+              ? 'Удаление…'
+              : remaining > 0
+                ? `Удалить через ${remaining} сек.`
+                : 'Удалить навсегда'}
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 export function SiteNewsPage() {
   const admin = useAdmin();
   const canManage = admin.role === 'ADMIN' || admin.role === 'FULL_ADMIN';
@@ -51,6 +133,8 @@ export function SiteNewsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SiteNewsItem | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const selected = useMemo(
     () => items.find((item) => item.id === selectedId) ?? null,
@@ -106,6 +190,7 @@ export function SiteNewsPage() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     if (
       !draft.title.trim() ||
       !draft.description.trim() ||
@@ -122,7 +207,11 @@ export function SiteNewsPage() {
       const saved = selected
         ? await siteContentService.update(selected.id, draft)
         : await siteContentService.create(draft);
-      await load();
+      setItems((current) =>
+        current.some((item) => item.id === saved.id)
+          ? current.map((item) => (item.id === saved.id ? saved : item))
+          : [saved, ...current],
+      );
       setSelectedId(saved.id);
       setDraft(itemDraft(saved));
       setNotice(selected ? 'Изменения сохранены' : 'Новость опубликована');
@@ -139,18 +228,19 @@ export function SiteNewsPage() {
   }
 
   async function remove(item: SiteNewsItem) {
-    if (!window.confirm(`Удалить новость «${item.title}»?`)) return;
+    if (saving) return;
     setSaving(true);
-    setError(null);
+    setDeleteError(null);
     setNotice(null);
     try {
       await siteContentService.remove(item.id);
       if (selectedId === item.id) startNew();
-      await load();
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      setDeleteTarget(null);
       setNotice('Новость удалена');
       window.setTimeout(() => setNotice(null), 3000);
     } catch (removeError) {
-      setError(
+      setDeleteError(
         removeError instanceof Error
           ? removeError.message
           : 'Не удалось удалить новость',
@@ -182,7 +272,12 @@ export function SiteNewsPage() {
             >
               Открыть сайт
             </a>
-            <button className="button primary" type="button" onClick={startNew}>
+            <button
+              className="button primary"
+              type="button"
+              onClick={startNew}
+              disabled={saving}
+            >
               Новая статья
             </button>
           </>
@@ -224,6 +319,7 @@ export function SiteNewsPage() {
               className="text-button"
               type="button"
               onClick={() => void load()}
+              disabled={saving || loading}
             >
               Обновить
             </button>
@@ -240,7 +336,11 @@ export function SiteNewsPage() {
                   key={item.id}
                   className={`site-news-item ${selectedId === item.id ? 'active' : ''}`}
                 >
-                  <button type="button" onClick={() => startEdit(item)}>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(item)}
+                    disabled={saving}
+                  >
                     <strong>{item.title}</strong>
                     <span>{item.description}</span>
                     <small>
@@ -253,12 +353,15 @@ export function SiteNewsPage() {
                   <button
                     type="button"
                     className="site-news-delete"
-                    onClick={() => void remove(item)}
+                    onClick={() => {
+                      setDeleteTarget(item);
+                      setDeleteError(null);
+                    }}
                     disabled={saving}
                     aria-label={`Удалить ${item.title}`}
                     title="Удалить"
                   >
-                    ×
+                    Удалить
                   </button>
                 </article>
               ))}
@@ -318,6 +421,19 @@ export function SiteNewsPage() {
           />
 
           <div className="site-news-form-actions">
+            {selected && (
+              <button
+                className="button danger site-news-delete-action"
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setDeleteTarget(selected);
+                  setDeleteError(null);
+                }}
+              >
+                Удалить новость
+              </button>
+            )}
             <button
               className="button secondary"
               type="button"
@@ -336,6 +452,18 @@ export function SiteNewsPage() {
           </div>
         </form>
       </div>
+      {deleteTarget && (
+        <DeleteNewsDialog
+          key={deleteTarget.id}
+          item={deleteTarget}
+          saving={saving}
+          error={deleteError}
+          onClose={() => {
+            if (!saving) setDeleteTarget(null);
+          }}
+          onConfirm={() => void remove(deleteTarget)}
+        />
+      )}
     </>
   );
 }
