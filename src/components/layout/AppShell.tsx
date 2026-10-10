@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { appConfig } from '../../config/app';
 import { isNavigationActive, navigation } from '../../config/navigation';
 import { useAdmin } from '../../features/admin-access/AdminContext';
@@ -7,6 +7,7 @@ import { useAdminLogout } from '../../features/admin-access/LogoutContext';
 import { Avatar } from '../ui/Primitives';
 import { Icon } from '../ui/Icon';
 import { SidebarHealth } from './SidebarHealth';
+import { GlobalSearch } from './GlobalSearch';
 import {
   NotificationBell,
   NotificationsProvider,
@@ -53,10 +54,7 @@ function ShellContent() {
     () => localStorage.getItem('admin-sidebar-compact') === 'true',
   );
   const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const searchRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -69,9 +67,6 @@ function ShellContent() {
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
   }, []);
-  useEffect(() => {
-    if (searchOpen) searchRef.current?.focus();
-  }, [searchOpen]);
 
   const allowedNavigation = useMemo(
     () =>
@@ -113,12 +108,6 @@ function ShellContent() {
       localStorage.setItem('admin-sidebar-compact', String(!value));
       return !value;
     });
-  }
-  function submitSearch(event: FormEvent) {
-    event.preventDefault();
-    if (!query.trim()) return;
-    navigate(`/admin/users?search=${encodeURIComponent(query.trim())}`);
-    setSearchOpen(false);
   }
 
   return (
@@ -216,7 +205,7 @@ function ShellContent() {
                 onClick={() => setSearchOpen(true)}
               >
                 <Icon name="search" />
-                <span>Поиск пользователей</span>
+                <span>Поиск по админке</span>
                 <kbd>Ctrl K</kbd>
               </button>
               <button
@@ -248,34 +237,7 @@ function ShellContent() {
             <Outlet />
           </main>
         </div>
-        {searchOpen && (
-          <div
-            className="search-overlay"
-            onMouseDown={() => setSearchOpen(false)}
-          >
-            <form
-              className="search-modal"
-              onSubmit={submitSearch}
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              <div>
-                <Icon name="search" />
-                <input
-                  ref={searchRef}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Имя, username, email или ID"
-                />
-                <kbd>ESC</kbd>
-              </div>
-              <div className="search-modal-results">
-                <p>
-                  Нажмите Enter, чтобы открыть результаты поиска пользователей.
-                </p>
-              </div>
-            </form>
-          </div>
-        )}
+        {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { AdminContext } from '../features/admin-access/AdminContext';
 import { siteContentService } from '../services/site-content.service';
 import type { SiteNewsItem } from '../types/site-content';
@@ -20,7 +21,11 @@ function mount(role: 'FULL_ADMIN' | 'MODERATOR' = 'FULL_ADMIN') {
     <AdminContext.Provider
       value={{ id: 'admin-1', publicId: 'root', name: 'Root', email: '', role }}
     >
-      <SiteNewsPage />
+      <RouterProvider
+        router={createMemoryRouter([{ path: '*', element: <SiteNewsPage /> }], {
+          initialEntries: ['/admin/site/news'],
+        })}
+      />
     </AdminContext.Provider>,
   );
 }
@@ -43,6 +48,106 @@ afterEach(() => {
 });
 
 describe('site news publishing and deletion', () => {
+  it('autosaves incomplete news to the server and preserves typing while saving', async () => {
+    let resolveSave!: (value: SiteNewsItem) => void;
+    const autosave = vi
+      .spyOn(siteContentService, 'saveDraft')
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSave = resolve;
+          }),
+      )
+      .mockResolvedValue({
+        ...item,
+        id: 44,
+        title: 'Продолжение',
+        status: 'DRAFT',
+        revision: 2,
+      });
+    mount();
+    await screen.findByRole('button', { name: `Удалить ${item.title}` });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    fireEvent.change(screen.getByLabelText('Заголовок статьи'), {
+      target: { value: 'Начало' },
+    });
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(autosave).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Начало', description: '' }),
+      expect.any(String),
+      null,
+    );
+    expect(screen.getByRole('button', { name: 'Опубликовать' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Заголовок статьи'), {
+      target: { value: 'Продолжение' },
+    });
+    await act(async () =>
+      resolveSave({
+        ...item,
+        id: 44,
+        title: 'Начало',
+        description: '',
+        status: 'DRAFT',
+        revision: 1,
+      }),
+    );
+    expect(screen.getByLabelText('Заголовок статьи')).toHaveValue(
+      'Продолжение',
+    );
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(autosave).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: 'Продолжение' }),
+      expect.any(String),
+      expect.objectContaining({ id: 44, revision: 1 }),
+    );
+    expect(
+      screen.getByText('Черновик сохранён на сервере. На сайте его ещё нет.'),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps unsaved text on conflict and retries only after an explicit request', async () => {
+    const autosave = vi
+      .spyOn(siteContentService, 'saveDraft')
+      .mockRejectedValue(new Error('Конфликт версий'));
+    mount();
+    await screen.findByRole('button', { name: `Удалить ${item.title}` });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    fireEvent.change(screen.getByLabelText('Заголовок статьи'), {
+      target: { value: 'Мой текст' },
+    });
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(screen.getByText('Конфликт версий')).toBeInTheDocument();
+    expect(screen.getByLabelText('Заголовок статьи')).toHaveValue('Мой текст');
+    await act(async () => vi.advanceTimersByTime(10000));
+    expect(autosave).toHaveBeenCalledTimes(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Повторить сохранение' }),
+    );
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(autosave).toHaveBeenCalledTimes(2);
+    expect(autosave.mock.calls[0]?.[1]).toBe(autosave.mock.calls[1]?.[1]);
+  });
+
+  it('publishes a restored server draft using its revision', async () => {
+    const savedDraft = { ...item, status: 'DRAFT' as const, revision: 7 };
+    vi.mocked(siteContentService.list).mockResolvedValue([savedDraft]);
+    const update = vi
+      .spyOn(siteContentService, 'update')
+      .mockResolvedValue({ ...item, status: 'PUBLISHED', revision: 8 });
+    mount();
+    fireEvent.click(
+      await screen.findByRole('button', { name: new RegExp('^' + item.title) }),
+    );
+    expect(screen.getByLabelText('Заголовок статьи')).toHaveValue(item.title);
+    fireEvent.click(screen.getByRole('button', { name: 'Опубликовать' }));
+    await screen.findByText('Новость опубликована');
+    expect(update).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({ title: item.title }),
+      7,
+    );
+  });
+
   it('publishes the draft and keeps the returned article selected without a second list request', async () => {
     const create = vi
       .spyOn(siteContentService, 'create')
@@ -72,7 +177,7 @@ describe('site news publishing and deletion', () => {
       screen.getByRole('button', { name: 'Сохранить изменения' }),
     );
     await screen.findByText('Изменения сохранены');
-    expect(update).toHaveBeenCalledWith(43, expect.anything());
+    expect(update).toHaveBeenCalledWith(43, expect.anything(), undefined);
     expect(create).toHaveBeenCalledTimes(1);
   });
 
