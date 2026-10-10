@@ -4,6 +4,7 @@ import {
   queueQuery,
 } from '../components/moderation/queue-query';
 import { useQueueAutoRefresh } from '../hooks/useQueueAutoRefresh';
+import { BulkDecisionPanel } from '../components/moderation/BulkDecisionPanel';
 import {
   reportPriorityLabel as priorityLabel,
   reportStatusLabel,
@@ -36,6 +37,8 @@ const age = (value: string) => {
 
 export function ReportsPage() {
   const [reload, setReload] = useState(0);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkCompleted, setBulkCompleted] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [rawParams, setParams] = useSearchParams();
@@ -186,6 +189,19 @@ export function ReportsPage() {
         counts={state.data?.counts}
         onChange={update}
       />
+      {bulkCompleted && (
+        <p role="status">Решение применено к зафиксированной выборке.</p>
+      )}
+      {selected.size > 0 && (
+        <BulkDecisionPanel
+          ids={[...selected]}
+          onClear={() => setSelected(new Set())}
+          onChanged={() => {
+            setBulkCompleted(true);
+            refresh();
+          }}
+        />
+      )}
       {state.data && state.loading && <p role="status">Обновление очереди…</p>}
       {state.data && state.error && (
         <section role="alert">
@@ -212,6 +228,27 @@ export function ReportsPage() {
             rows={state.data.items}
             columns={columns}
             rowKey={(report) => report.id}
+            selected={selected}
+            isRowSelectable={(report) =>
+              report.targetType !== 'SUPPORT' &&
+              ['OPEN', 'IN_REVIEW'].includes(report.status) &&
+              (selected.has(report.id) || selected.size < 100)
+            }
+            onSelect={(id) => {
+              const report = state.data?.items.find((item) => item.id === id);
+              if (
+                !report ||
+                report.targetType === 'SUPPORT' ||
+                !['OPEN', 'IN_REVIEW'].includes(report.status)
+              )
+                return;
+              setSelected((previous) => {
+                const next = new Set(previous);
+                if (next.has(id)) next.delete(id);
+                else if (next.size < 100) next.add(id);
+                return next;
+              });
+            }}
             rowClassName={(report) =>
               report.priority === 'CRITICAL'
                 ? 'row-critical'

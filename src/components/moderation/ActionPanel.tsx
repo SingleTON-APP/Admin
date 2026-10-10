@@ -10,6 +10,8 @@ import type {
   StaffSummary,
 } from '../../types/domain';
 import { Dialog } from '../ui/Dialog';
+import { useNavigate } from 'react-router-dom';
+import { operationsV3Service } from '../../services/operations-v3.service';
 
 type Pending =
   | {
@@ -32,6 +34,7 @@ export function ActionPanel({
   staff: StaffSummary[];
   onChanged: () => void;
 }) {
+  const navigate = useNavigate();
   const [pending, setPending] = useState<Pending | null>(null);
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
@@ -63,6 +66,26 @@ export function ActionPanel({
     event.preventDefault();
     if (!pending || reason.trim().length < 10) return;
     const value = pending;
+    if (value.kind === 'action' && value.action === 'PERMANENT_BAN_USER') {
+      if (!report.targetUser?.id) {
+        setResult({ tone: 'error', text: 'Пользователь не определён.' });
+        return;
+      }
+      const succeeded = await run('proposal', async () => {
+        const proposal = await operationsV3Service.createProposal({
+          action: 'PERMANENT_BAN_USER',
+          targetUserId: report.targetUser!.id,
+          reportId: report.id,
+          reason: reason.trim(),
+          idempotencyKey: value.idempotencyKey,
+        });
+        navigate(
+          `/admin/operations?tab=approvals&proposal=${encodeURIComponent(proposal.id)}`,
+        );
+      });
+      if (succeeded) setPending(null);
+      return;
+    }
     const succeeded = await run('confirmation', () =>
       value.kind === 'action'
         ? adminService.moderateReportTarget(
@@ -171,7 +194,11 @@ export function ActionPanel({
           disabled={!!busy || admin.role === 'MODERATOR'}
           onChange={(event) =>
             void run('assign', () =>
-              adminService.assignReport(report.id, event.target.value),
+              adminService.assignReport(
+                report.id,
+                event.target.value,
+                report.updatedAt,
+              ),
             )
           }
         >
@@ -319,6 +346,14 @@ export function ActionPanel({
           className="form-stack"
           onSubmit={(event) => void submitConfirmation(event)}
         >
+          {pending?.kind === 'action' &&
+            pending.action === 'PERMANENT_BAN_USER' && (
+              <p>
+                Будет создана заявка на независимое согласование. Блокировка
+                выполнится только после проверки другим администратором и
+                отдельного запуска создателем заявки.
+              </p>
+            )}
           <div className="confirmation-target">
             <span>Точная цель</span>
             <strong>

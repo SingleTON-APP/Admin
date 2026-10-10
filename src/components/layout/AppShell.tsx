@@ -30,6 +30,8 @@ const routeLabels: Record<string, string> = {
   thresholds: 'Пороги уведомлений',
   access: 'Мои сессии и 2FA',
   'report-groups': 'Группы жалоб',
+  operations: 'Операции',
+  dossier: 'Досье',
   appeals: 'Апелляции',
   site: 'Сайт',
   news: 'Новости',

@@ -1,8 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render as renderComponent,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { adminService } from '../../services/admin.service';
 import type { Report, StaffIdentity } from '../../types/domain';
 import { ActionPanel } from './ActionPanel';
+const render = (element: ReactNode) =>
+  renderComponent(<MemoryRouter>{element}</MemoryRouter>);
 import {
   CommentBranch,
   ContextLevelSwitcher,

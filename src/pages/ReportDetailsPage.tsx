@@ -2,6 +2,7 @@ import { AuditEventDetails } from '../components/audit/AuditEventDetails';
 import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ActionPanel } from '../components/moderation/ActionPanel';
+import { ReportDeadline } from '../components/moderation/ReportDeadline';
 import { ModerationContextViewer } from '../components/moderation/ModerationContextViewer';
 import { ReportSummary } from '../components/moderation/ReportSummary';
 import { SupportReplyPanel } from '../components/moderation/SupportReplyPanel';
@@ -114,6 +115,10 @@ export function ReportDetailsPage() {
               </button>
             </p>
           )}
+          <ReportDeadline
+            report={report}
+            onChanged={() => setReload((value) => value + 1)}
+          />
           <ActionPanel
             report={report}
             admin={admin}

@@ -214,10 +214,10 @@ export const adminService = {
     request<ReportDetails>(`/admin/reports/${id}/take`, json('POST')).then(
       reportDetails,
     ),
-  assignReport: (id: string, staffUserId: string) =>
+  assignReport: (id: string, staffUserId: string, expectedUpdatedAt: string) =>
     request<ReportDetails>(
       `/admin/reports/${id}/assign`,
-      json('PATCH', { staffUserId }),
+      json('PATCH', { staffUserId, expectedUpdatedAt }),
     ).then(reportDetails),
   updateReportStatus: (
     id: string,
@@ -235,7 +235,10 @@ export const adminService = {
     ).then(reportDetails),
   /** Ответ на обращение в поддержку — приходит пользователю в чат «Hub». */
   replySupport: (id: string, text: string) =>
-    request<{ ok: boolean }>(`/admin/reports/${id}/reply`, json('POST', { text })),
+    request<{ ok: boolean }>(
+      `/admin/reports/${id}/reply`,
+      json('POST', { text }),
+    ),
   addReportNote: (id: string, body: string) =>
     request<RawNote>(`/admin/reports/${id}/notes`, json('POST', { body })),
   moderateReportTarget: (

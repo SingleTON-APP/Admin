@@ -27,7 +27,7 @@ describe('searchable administration help', () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Сбросить поиск' }));
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Найдено вопросов: 17',
+      'Найдено вопросов: 21',
     );
   });
   it('explains privacy requirements and separates delivery from reading', () => {
