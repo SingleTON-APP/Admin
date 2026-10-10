@@ -10,7 +10,6 @@ import { ReportsPage } from '../pages/ReportsPage';
 import { StaffPage } from '../pages/StaffPage';
 import { SystemPage } from '../pages/SystemPage';
 import { SiteNewsPage } from '../pages/SiteNewsPage';
-import { UserDetailsPage } from '../pages/UserDetailsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { HelpPage } from '../pages/HelpPage';
@@ -28,6 +27,18 @@ export const router = createBrowserRouter([
       { path: '/admin/monitor', element: <MonitorPage /> },
       { path: '/admin/notifications', element: <NotificationsPage /> },
       { path: '/admin/help', element: <HelpPage /> },
+      {
+        path: '/admin/operations',
+        lazy: async () => ({
+          Component: (await import('../pages/OperationsPage')).OperationsPage,
+        }),
+      },
+      {
+        path: '/admin/users/:id/dossier',
+        lazy: async () => ({
+          Component: (await import('../pages/UserDossierPage')).UserDossierPage,
+        }),
+      },
       {
         path: '/admin/history',
         lazy: async () => ({
@@ -80,7 +91,7 @@ export const router = createBrowserRouter([
         }),
       },
       { path: '/admin/users', element: <UsersPage /> },
-      { path: '/admin/users/:id', element: <UserDetailsPage /> },
+      { path: '/admin/users/:id', lazy: async () => ({ Component: (await import('../pages/UserDetailsPage')).UserDetailsPage }) },
       { path: '/admin/reports', element: <ReportsPage /> },
       { path: '/admin/reports/:id', element: <ReportDetailsPage /> },
       { path: '/admin/staff', element: <StaffPage /> },

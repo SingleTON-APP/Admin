@@ -1,0 +1,90 @@
+.operations-workspace {
+  display: grid;
+  gap: 18px;
+}
+.operations-workspace .operations-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.operations-workspace .operations-tabs a {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+}
+.operations-workspace .operations-tabs a[aria-current='page'] {
+  color: var(--text-primary);
+  background: var(--accent-muted);
+}
+.operations-workspace .operations-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.operations-workspace .operations-toolbar label {
+  display: grid;
+  gap: 5px;
+}
+.operations-workspace .operation-timeline {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+}
+.operations-workspace .operation-timeline > li {
+  padding: 12px;
+  border-left: 2px solid var(--border);
+}
+.operations-workspace .operation-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.operations-workspace .operation-summary > div {
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.operations-workspace dt {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.operations-workspace dd {
+  margin: 5px 0 0;
+  overflow-wrap: anywhere;
+}
+.operations-workspace .operation-reason {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.operations-workspace .operation-empty {
+  color: var(--text-secondary);
+  padding: 16px 0;
+}
+.operations-workspace .operation-card {
+  display: grid;
+  gap: 12px;
+}
+.operations-workspace .operation-card header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.operations-workspace .operation-card h3 {
+  margin: 0;
+}
+.operations-workspace .operation-split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(230px, 1fr);
+  gap: 18px;
+}
+@media (max-width: 900px) {
+  .operations-workspace .operation-split {
+    grid-template-columns: 1fr;
+  }
+}

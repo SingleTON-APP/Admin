@@ -94,6 +94,7 @@ export interface MessageMetadata {
   deleted?: boolean;
 }
 export interface Report {
+  dueAt?: string | null;
   id: string;
   targetType: ReportTargetType;
   targetId: string;

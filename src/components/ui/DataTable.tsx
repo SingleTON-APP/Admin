@@ -13,6 +13,7 @@ export function DataTable<T>({
   rowKey,
   selected,
   onSelect,
+  isRowSelectable,
   onRowClick,
   rowClassName,
 }: {
@@ -21,6 +22,7 @@ export function DataTable<T>({
   rowKey: (row: T) => string;
   selected?: Set<string>;
   onSelect?: (id: string) => void;
+  isRowSelectable?: (row: T) => boolean;
   onRowClick?: (row: T) => void;
   rowClassName?: (row: T) => string;
 }) {
@@ -75,6 +77,7 @@ export function DataTable<T>({
                       aria-label={`Выбрать ${key}`}
                       type="checkbox"
                       checked={selected?.has(key)}
+                      disabled={isRowSelectable ? !isRowSelectable(row) : false}
                       onChange={() => onSelect(key)}
                       onClick={(event) => event.stopPropagation()}
                     />

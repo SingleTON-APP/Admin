@@ -1,5 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import {
+  operationsV3Service,
+  type SensitiveAction,
+} from '../services/operations-v3.service';
 import { Dialog } from '../components/ui/Dialog';
 import {
   Avatar,
@@ -18,8 +22,14 @@ type Action = 'TEMPORARY' | 'PERMANENT' | 'UNBAN' | 'DELETE' | 'REVOKE_ALL';
 export function UserDetailsPage() {
   const { id = '' } = useParams();
   const admin = useAdmin();
+  const navigate = useNavigate();
+  const [proposalKey, setProposalKey] = useState(() => crypto.randomUUID());
   const [reload, setReload] = useState(0);
-  const [action, setAction] = useState<Action | null>(null);
+  const [action, updateAction] = useState<Action | null>(null);
+  const setAction = (value: Action | null) => {
+    updateAction(value);
+    if (value) setProposalKey(crypto.randomUUID());
+  };
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState('');
   const state = useAsync(
@@ -49,12 +59,23 @@ export function UserDetailsPage() {
           durationDays: days,
           reason,
         });
-      if (action === 'PERMANENT')
-        await adminService.sanction(user.id, { type: action, reason });
+      if (['PERMANENT', 'DELETE', 'REVOKE_ALL'].includes(action)) {
+        const actions: Record<string, SensitiveAction> = {
+          PERMANENT: 'PERMANENT_BAN_USER',
+          DELETE: 'DELETE_USER',
+          REVOKE_ALL: 'REVOKE_ALL_SESSIONS',
+        };
+        const proposal = await operationsV3Service.createProposal({
+          action: actions[action]!,
+          targetUserId: user.id,
+          reason: reason.trim(),
+          idempotencyKey: proposalKey,
+        });
+        navigate(
+          `/admin/operations?tab=approvals&proposal=${encodeURIComponent(proposal.id)}`,
+        );
+      }
       if (action === 'UNBAN') await adminService.unban(user.id, reason);
-      if (action === 'DELETE') await adminService.deleteUser(user.id, reason);
-      if (action === 'REVOKE_ALL')
-        await adminService.revokeAllSessions(user.id, reason);
       setAction(null);
       setReload((value) => value + 1);
     } catch (error) {
@@ -75,9 +96,17 @@ export function UserDetailsPage() {
         title={name}
         description={`Создан ${new Date(user.createdAt).toLocaleString('ru-RU')}`}
         actions={
-          <Link className="button secondary" to="/admin/users">
-            К списку
-          </Link>
+          <>
+            <Link
+              className="button secondary"
+              to={`/admin/users/${user.id}/dossier`}
+            >
+              Единое досье
+            </Link>
+            <Link className="button secondary" to="/admin/users">
+              К списку
+            </Link>
+          </>
         }
       />
       <div className="detail-title profile-heading">
@@ -272,10 +301,21 @@ export function UserDetailsPage() {
       )}
       <Dialog
         open={action !== null}
-        title="Подтверждение действия"
+        title={
+          action && ['PERMANENT', 'DELETE', 'REVOKE_ALL'].includes(action)
+            ? 'Заявка на независимое согласование'
+            : 'Подтверждение действия'
+        }
         onClose={() => setAction(null)}
       >
         <form className="form-stack" onSubmit={submit}>
+          {action && ['PERMANENT', 'DELETE', 'REVOKE_ALL'].includes(action) && (
+            <p>
+              Действие будет выполнено только после проверки другим
+              администратором и отдельного подтверждения исполнения создателем
+              заявки.
+            </p>
+          )}
           {action === 'TEMPORARY' && (
             <label>
               Срок, дней
@@ -291,7 +331,7 @@ export function UserDetailsPage() {
           )}
           <label>
             Причина
-            <textarea name="reason" maxLength={1000} required />
+            <textarea name="reason" minLength={10} maxLength={1000} required />
           </label>
           {failure && <p className="state-error">{failure}</p>}
           <div className="dialog-actions">
