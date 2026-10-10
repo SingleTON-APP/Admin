@@ -67,6 +67,19 @@
 .operations-workspace .operation-card {
   display: grid;
   gap: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+.operations-workspace .operation-card > p,
+.operations-workspace .operation-card h2 {
+  margin: 0;
+  line-height: 1.5;
+}
+.operations-workspace .data-note {
+  margin: 0;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .operations-workspace .operation-card header {
   display: flex;
