@@ -31,15 +31,12 @@ export async function siteRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const method = (init.method || 'GET').toUpperCase();
   const csrf = getAdminCsrf();
   const response = await fetch(`${SITE_API_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
-      ...(csrf && !['GET', 'HEAD'].includes(method)
-        ? { 'X-Admin-CSRF': csrf }
-        : {}),
+      ...(csrf ? { 'X-Admin-CSRF': csrf } : {}),
       ...init.headers,
     },
   });

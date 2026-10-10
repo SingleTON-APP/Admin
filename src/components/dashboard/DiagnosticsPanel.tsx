@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/contracts';
 import {
   operationsV3Service,
@@ -6,10 +7,45 @@ import {
 } from '../../services/operations-v3.service';
 
 export function DiagnosticsPanel() {
-  const [code, setCode] = useState('');
+  const [params] = useSearchParams();
+  const requestedCode = params.get('code') || '';
+  const [code, setCode] = useState(requestedCode);
   const [trace, setTrace] = useState<DiagnosticTrace | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (
+      !/^[a-f\d]{8}-[a-f\d]{4}-4[a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(
+        requestedCode,
+      )
+    )
+      return;
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setCode(requestedCode);
+      setBusy(true);
+      setError('');
+      setTrace(null);
+      void operationsV3Service
+        .diagnostic(requestedCode, controller.signal)
+        .then((value) => {
+          if (!controller.signal.aborted) setTrace(value);
+        })
+        .catch((failure) => {
+          if (!controller.signal.aborted)
+            setError(
+              failure instanceof Error
+                ? failure.message
+                : 'Диагностика недоступна.',
+            );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setBusy(false);
+        });
+    });
+    return () => controller.abort();
+  }, [requestedCode]);
   async function search(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -92,7 +128,13 @@ export function DiagnosticsPanel() {
             сообщения недоступна; клиентский код служит ссылкой, а не измерением
             полного пользовательского сценария.
           </p>
-          <p className="data-note">Этапы обработки в контексте этого запроса: {trace.coverage.processStages === 'OBSERVED' ? 'Есть наблюдения' : 'Не наблюдались'}.</p>
+          <p className="data-note">
+            Этапы обработки в контексте этого запроса:{' '}
+            {trace.coverage.processStages === 'OBSERVED'
+              ? 'Есть наблюдения'
+              : 'Не наблюдались'}
+            .
+          </p>
           <ol className="operation-timeline">
             {trace.timeline.map((entry, index) => (
               <li key={`${entry.startedAt}-${index}`}>

@@ -2,9 +2,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from 'react';
+import { useBlocker, useSearchParams } from 'react-router-dom';
 import { SITE_PUBLIC_URL } from '../api/site-client';
 import { Dialog } from '../components/ui/Dialog';
 import { SiteArticleEditor } from '../components/site-content/SiteArticleEditor';
@@ -77,8 +79,11 @@ function DeleteNewsDialog({
     >
       <div className="form-stack">
         <p>
-          Публикация «<strong>{item.title}</strong>» исчезнет с главного сайта и
-          из списка новостей. Отменить удаление не получится.
+          {item.status === 'DRAFT' ? 'Черновик' : 'Публикация'} «
+          <strong>{item.title || 'Без заголовка'}</strong>» будет удалён
+          {item.status === 'DRAFT' ? '' : 'а'}.
+          {item.status !== 'DRAFT' && ' Новость исчезнет с главного сайта.'}{' '}
+          Отменить удаление не получится.
         </p>
         <p className="muted" role="status">
           {remaining > 0
@@ -125,6 +130,8 @@ function DeleteNewsDialog({
 
 export function SiteNewsPage() {
   const admin = useAdmin();
+  const [params] = useSearchParams();
+  const requestedId = Number(params.get('article')) || null;
   const canManage = admin.role === 'ADMIN' || admin.role === 'FULL_ADMIN';
   const [items, setItems] = useState<SiteNewsItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -135,35 +142,133 @@ export function SiteNewsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SiteNewsItem | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [draftKey, setDraftKey] = useState(() => crypto.randomUUID());
+  const [lastSaved, setLastSaved] = useState(() =>
+    JSON.stringify(emptyDraft()),
+  );
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoError, setAutoError] = useState<string | null>(null);
+  const editorGeneration = useRef(0);
 
   const selected = useMemo(
     () => items.find((item) => item.id === selectedId) ?? null,
     [items, selectedId],
   );
+  const meaningful = Boolean(
+    draft.title.trim() ||
+    draft.description.trim() ||
+    draft.content.trim() ||
+    draft.image,
+  );
+  const dirty =
+    (meaningful || selected !== null) && JSON.stringify(draft) !== lastSaved;
+  const busy = saving || autoSaving;
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+  );
 
-  const load = useCallback(async (signal?: AbortSignal) => {
-    await Promise.resolve();
-    if (signal?.aborted) return;
-    setLoading(true);
-    setError(null);
-    try {
-      setItems(await siteContentService.list(signal));
-    } catch (loadError) {
-      if (
-        loadError instanceof DOMException &&
-        loadError.name === 'AbortError'
-      ) {
-        return;
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (dirty) {
+        event.preventDefault();
+        event.returnValue = '';
       }
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : 'Не удалось загрузить новости',
-      );
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, []);
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [dirty]);
+
+  useEffect(() => {
+    if (blocker.state === 'blocked' && !dirty) blocker.proceed();
+  }, [blocker, dirty]);
+
+  useEffect(() => {
+    if (
+      !canManage ||
+      loading ||
+      busy ||
+      autoError ||
+      deleteTarget ||
+      !dirty ||
+      (selected && selected.status !== 'DRAFT')
+    )
+      return;
+    const snapshot = draft;
+    const generation = editorGeneration.current;
+    const timer = window.setTimeout(() => {
+      setAutoSaving(true);
+      void siteContentService
+        .saveDraft(snapshot, draftKey, selected)
+        .then((saved) => {
+          if (editorGeneration.current !== generation) return;
+          setItems((current) => [
+            saved,
+            ...current.filter((item) => item.id !== saved.id),
+          ]);
+          setSelectedId(saved.id);
+          setLastSaved(JSON.stringify(snapshot));
+        })
+        .catch((failure) => {
+          if (editorGeneration.current === generation)
+            setAutoError(
+              failure instanceof Error
+                ? failure.message
+                : 'Не удалось сохранить черновик',
+            );
+        })
+        .finally(() => setAutoSaving(false));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [
+    canManage,
+    loading,
+    busy,
+    autoError,
+    deleteTarget,
+    dirty,
+    draft,
+    draftKey,
+    selected,
+  ]);
+
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      await Promise.resolve();
+      if (signal?.aborted) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const rows = await siteContentService.list(signal);
+        setItems(rows);
+        const requested = rows.find((item) => item.id === requestedId);
+        if (requested) {
+          editorGeneration.current++;
+          setSelectedId(requested.id);
+          setDraft(itemDraft(requested));
+          setLastSaved(JSON.stringify(itemDraft(requested)));
+          setAutoError(null);
+        }
+      } catch (loadError) {
+        if (
+          loadError instanceof DOMException &&
+          loadError.name === 'AbortError'
+        ) {
+          return;
+        }
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : 'Не удалось загрузить новости',
+        );
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [requestedId],
+  );
 
   useEffect(() => {
     if (!canManage) return;
@@ -175,6 +280,18 @@ export function SiteNewsPage() {
   }, [canManage, load]);
 
   function startNew() {
+    if (busy) return;
+    if (
+      dirty &&
+      !window.confirm(
+        'Оставить несохранённые изменения и открыть новую статью?',
+      )
+    )
+      return;
+    editorGeneration.current++;
+    setDraftKey(crypto.randomUUID());
+    setLastSaved(JSON.stringify(emptyDraft()));
+    setAutoError(null);
     setSelectedId(null);
     setDraft(emptyDraft());
     setError(null);
@@ -182,6 +299,17 @@ export function SiteNewsPage() {
   }
 
   function startEdit(item: SiteNewsItem) {
+    if (busy) return;
+    if (
+      dirty &&
+      !window.confirm(
+        'Оставить несохранённые изменения и открыть другую статью?',
+      )
+    )
+      return;
+    editorGeneration.current++;
+    setLastSaved(JSON.stringify(itemDraft(item)));
+    setAutoError(null);
     setSelectedId(item.id);
     setDraft(itemDraft(item));
     setError(null);
@@ -190,7 +318,7 @@ export function SiteNewsPage() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (saving) return;
+    if (busy || loading) return;
     if (
       !draft.title.trim() ||
       !draft.description.trim() ||
@@ -205,7 +333,7 @@ export function SiteNewsPage() {
     setNotice(null);
     try {
       const saved = selected
-        ? await siteContentService.update(selected.id, draft)
+        ? await siteContentService.update(selected.id, draft, selected.revision)
         : await siteContentService.create(draft);
       setItems((current) =>
         current.some((item) => item.id === saved.id)
@@ -214,7 +342,13 @@ export function SiteNewsPage() {
       );
       setSelectedId(saved.id);
       setDraft(itemDraft(saved));
-      setNotice(selected ? 'Изменения сохранены' : 'Новость опубликована');
+      setLastSaved(JSON.stringify(itemDraft(saved)));
+      setAutoError(null);
+      setNotice(
+        selected && selected.status !== 'DRAFT'
+          ? 'Изменения сохранены'
+          : 'Новость опубликована',
+      );
       window.setTimeout(() => setNotice(null), 3000);
     } catch (saveError) {
       setError(
@@ -228,13 +362,20 @@ export function SiteNewsPage() {
   }
 
   async function remove(item: SiteNewsItem) {
-    if (saving) return;
+    if (busy) return;
     setSaving(true);
     setDeleteError(null);
     setNotice(null);
     try {
       await siteContentService.remove(item.id);
-      if (selectedId === item.id) startNew();
+      if (selectedId === item.id) {
+        editorGeneration.current++;
+        setSelectedId(null);
+        setDraft(emptyDraft());
+        setLastSaved(JSON.stringify(emptyDraft()));
+        setDraftKey(crypto.randomUUID());
+        setAutoError(null);
+      }
       setItems((current) => current.filter((entry) => entry.id !== item.id));
       setDeleteTarget(null);
       setNotice('Новость удалена');
@@ -276,7 +417,7 @@ export function SiteNewsPage() {
               className="button primary"
               type="button"
               onClick={startNew}
-              disabled={saving}
+              disabled={busy}
             >
               Новая статья
             </button>
@@ -313,13 +454,18 @@ export function SiteNewsPage() {
           <div className="card-head">
             <div>
               <h2>Публикации</h2>
-              <p>{items.length} на сайте</p>
+              <p>
+                Опубликовано:{' '}
+                {items.filter((item) => item.status !== 'DRAFT').length} ·
+                Черновики:{' '}
+                {items.filter((item) => item.status === 'DRAFT').length}
+              </p>
             </div>
             <button
               className="text-button"
               type="button"
               onClick={() => void load()}
-              disabled={saving || loading}
+              disabled={busy || loading || dirty}
             >
               Обновить
             </button>
@@ -339,11 +485,12 @@ export function SiteNewsPage() {
                   <button
                     type="button"
                     onClick={() => startEdit(item)}
-                    disabled={saving}
+                    disabled={busy}
                   >
-                    <strong>{item.title}</strong>
+                    <strong>{item.title || 'Без заголовка'}</strong>
                     <span>{item.description}</span>
                     <small>
+                      {item.status === 'DRAFT' ? 'Черновик' : 'Опубликовано'} ·{' '}
                       {item.date} · обновлено{' '}
                       {new Date(`${item.updated_at}Z`).toLocaleDateString(
                         'ru-RU',
@@ -357,7 +504,7 @@ export function SiteNewsPage() {
                       setDeleteTarget(item);
                       setDeleteError(null);
                     }}
-                    disabled={saving}
+                    disabled={busy}
                     aria-label={`Удалить ${item.title}`}
                     title="Удалить"
                   >
@@ -376,9 +523,11 @@ export function SiteNewsPage() {
                 {selected ? `Статья #${selected.id}` : 'Новая статья'}
               </p>
               <h2>
-                {selected
-                  ? 'Редактирование публикации'
-                  : 'Подготовка публикации'}
+                {selected?.status === 'DRAFT'
+                  ? 'Редактирование черновика'
+                  : selected
+                    ? 'Редактирование публикации'
+                    : 'Подготовка публикации'}
               </h2>
             </div>
             <label>
@@ -397,6 +546,35 @@ export function SiteNewsPage() {
                 required
               />
             </label>
+          </div>
+
+          <div
+            className={`site-content-alert site-news-save-status${autoError ? ' site-content-alert-error' : ''}`}
+            role="status"
+          >
+            {autoError ? (
+              <>
+                <span>{autoError}</span>
+                <button
+                  className="text-button"
+                  type="button"
+                  onClick={() => setAutoError(null)}
+                  disabled={busy}
+                >
+                  Повторить сохранение
+                </button>
+              </>
+            ) : selected && selected.status !== 'DRAFT' ? (
+              'Изменения опубликованной статьи появятся на сайте после сохранения.'
+            ) : autoSaving ? (
+              'Сохраняем черновик…'
+            ) : dirty ? (
+              'Есть изменения — черновик сохранится автоматически.'
+            ) : selected?.status === 'DRAFT' ? (
+              'Черновик сохранён на сервере. На сайте его ещё нет.'
+            ) : (
+              'Начните писать — черновик сохранится автоматически.'
+            )}
           </div>
 
           <SiteArticleEditor
@@ -425,7 +603,7 @@ export function SiteNewsPage() {
               <button
                 className="button danger site-news-delete-action"
                 type="button"
-                disabled={saving}
+                disabled={busy}
                 onClick={() => {
                   setDeleteTarget(selected);
                   setDeleteError(null);
@@ -438,20 +616,56 @@ export function SiteNewsPage() {
               className="button secondary"
               type="button"
               onClick={startNew}
-              disabled={saving}
+              disabled={busy}
             >
               Сбросить
             </button>
-            <button className="button primary" type="submit" disabled={saving}>
+            <button
+              className="button primary"
+              type="submit"
+              disabled={busy || loading}
+            >
               {saving
                 ? 'Сохранение…'
-                : selected
+                : selected && selected.status !== 'DRAFT'
                   ? 'Сохранить изменения'
                   : 'Опубликовать'}
             </button>
           </div>
         </form>
       </div>
+      {blocker.state === 'blocked' && (
+        <Dialog
+          open
+          title="Остались несохранённые изменения"
+          onClose={() => blocker.reset()}
+        >
+          <div className="form-stack">
+            <p>
+              Дождитесь сохранения черновика или сохраните изменения статьи.
+              Если уйти сейчас, последние изменения потеряются.
+            </p>
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="button secondary"
+                autoFocus
+                onClick={() => blocker.reset()}
+              >
+                Продолжить редактирование
+              </button>
+              <button
+                type="button"
+                className="button danger"
+                disabled={busy}
+                onClick={() => blocker.proceed()}
+              >
+                Уйти без сохранения
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
       {deleteTarget && (
         <DeleteNewsDialog
           key={deleteTarget.id}

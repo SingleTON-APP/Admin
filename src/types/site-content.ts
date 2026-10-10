@@ -7,6 +7,8 @@ export interface SiteNewsItem {
   date: string;
   created_at: string;
   updated_at: string;
+  status?: 'DRAFT' | 'PUBLISHED';
+  revision?: number;
 }
 
 export interface SiteNewsDraft {

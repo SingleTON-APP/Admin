@@ -35,6 +35,18 @@
   color: #8ed8af;
 }
 
+.site-news-save-status {
+  border-color: var(--border);
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.site-news-save-status button {
+  font-size: inherit;
+  flex-shrink: 0;
+}
+
 .site-news-sidebar {
   position: sticky;
   top: 78px;
@@ -319,6 +331,13 @@
 
 @media (max-width: 1220px) {
   .site-content-layout {
-    grid-template-columns: 290px minmax(620px, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .site-news-sidebar {
+    position: static;
+    max-height: 260px;
+  }
+  .site-news-list {
+    max-height: 180px;
   }
 }
