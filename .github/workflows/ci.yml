@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, hub]
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -118,6 +118,8 @@ jobs:
           test "$(docker inspect --format '{{.State.StartedAt}}' admin-ci-dns)" = "$started_at"
           test "$(docker inspect --format '{{.RestartCount}}' admin-ci-dns)" = 0
       - name: Upload build artifact
+        # Артефакт — для просмотра; обрыв связи с GitHub с нашего сервера не валит CI.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: admin-dist
