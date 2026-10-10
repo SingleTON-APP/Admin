@@ -33,8 +33,9 @@ rollback() {
 }
 image=$(sed -n 's/^ADMIN_IMAGE=//p' admin-release.env)
 [[ "$image" =~ ^deployhubnetwork/admin:(prod|dev)-[a-f0-9]{40}$ ]] || { echo 'Invalid Admin image reference'; exit 1; }
+# Свой раннер собрал образ на этом же сервере — тогда качать нечего.
 attempt=1
-until docker pull "$image"; do
+until docker image inspect "$image" >/dev/null 2>&1 || docker pull "$image"; do
   if (( attempt >= 3 )); then
     echo "Unable to pull Admin image after $attempt attempts"
     exit 1
