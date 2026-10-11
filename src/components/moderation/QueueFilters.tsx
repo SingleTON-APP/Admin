@@ -224,7 +224,7 @@ function QueueSearch({
         id="report-search"
         value={search}
         onChange={(event) => setSearch(event.target.value)}
-        placeholder="ID жалобы, объекта, пользователя или username"
+        placeholder="Описание, категория, ID или username"
       />
       <button className="button secondary" type="submit">
         Найти

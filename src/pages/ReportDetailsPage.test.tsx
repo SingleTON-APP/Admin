@@ -1,5 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AdminContext } from '../features/admin-access/AdminContext';
 import { adminService } from '../services/admin.service';
@@ -66,15 +72,154 @@ function mount(from?: string) {
       >
         <Routes>
           <Route path="/admin/reports/:id" element={<ReportDetailsPage />} />
+          <Route path="/admin/reports" element={<QueueResult />} />
         </Routes>
       </MemoryRouter>
     </AdminContext.Provider>,
   );
 }
+function QueueResult() {
+  const location = useLocation();
+  return (
+    <>
+      <p>Очередь:</p>
+      <p>{location.state?.notice}</p>
+    </>
+  );
+}
+async function decide(advance = true) {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Завершить жалобу' }),
+  );
+  const dialog = screen.getByRole('dialog');
+  fireEvent.change(within(dialog).getByLabelText('Причина'), {
+    target: { value: 'Нарушение проверено модератором' },
+  });
+  if (!advance) fireEvent.click(within(dialog).getByRole('checkbox'));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Подтвердить' }));
+}
 afterEach(() => vi.restoreAllMocks());
 
 describe('moderator workbench', () => {
-  it('leads with description, hides technical IDs and never loads private context implicitly', async () => {
+  it('does not pull the moderator back after they leave while a decision is saving', async () => {
+    let complete!: (value: ReportDetails) => void;
+    vi.spyOn(adminService, 'updateReportStatus').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const next = vi.spyOn(adminService, 'reports');
+    mount();
+    await decide();
+    fireEvent.click(screen.getByRole('link', { name: 'К очереди' }));
+    await screen.findByText('Очередь:');
+    complete(report);
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(screen.getByText('Очередь:')).toBeVisible();
+  });
+  it('saves the decision before advancing and preserves queue filters and ordering', async () => {
+    const update = vi
+      .spyOn(adminService, 'updateReportStatus')
+      .mockResolvedValue(report);
+    const next = vi
+      .spyOn(adminService, 'reports')
+      .mockResolvedValue({ items: [{ ...report, id: 'report-2' }] } as never);
+    mount('/admin/reports?priority=HIGH&view=mine&sort=age&order=asc&page=3');
+    await decide();
+    await waitFor(() => expect(next).toHaveBeenCalled());
+    expect(update).toHaveBeenCalledWith(
+      'report-1',
+      'RESOLVED',
+      'Нарушение проверено модератором',
+    );
+    expect(update.mock.invocationCallOrder[0]).toBeLessThan(
+      next.mock.invocationCallOrder[0]!,
+    );
+    expect(next).toHaveBeenCalledWith(
+      expect.objectContaining({
+        priority: 'HIGH',
+        view: 'mine',
+        sort: 'age',
+        order: 'asc',
+        page: 1,
+        pageSize: 1,
+        activeOnly: true,
+        excludeId: 'report-1',
+      }),
+    );
+    await waitFor(() =>
+      expect(adminService.report).toHaveBeenCalledWith(
+        'report-2',
+        expect.any(AbortSignal),
+      ),
+    );
+    expect(screen.getByRole('link', { name: 'К очереди' })).toHaveAttribute(
+      'href',
+      '/admin/reports?priority=HIGH&view=mine&sort=age&order=asc&page=3',
+    );
+  });
+  it('returns to the queue with a completion notice when no active reports remain', async () => {
+    vi.spyOn(adminService, 'updateReportStatus').mockResolvedValue(report);
+    vi.spyOn(adminService, 'reports').mockResolvedValue({ items: [] } as never);
+    mount();
+    await decide();
+    expect(
+      await screen.findByText(
+        'Решение сохранено. Открытых жалоб по этим фильтрам больше нет.',
+      ),
+    ).toBeVisible();
+  });
+  it('retries only the next-report request if loading fails after a saved decision', async () => {
+    const update = vi
+      .spyOn(adminService, 'updateReportStatus')
+      .mockResolvedValue(report);
+    const next = vi
+      .spyOn(adminService, 'reports')
+      .mockRejectedValueOnce(new Error('Network unavailable'))
+      .mockResolvedValueOnce({ items: [] } as never);
+    mount();
+    await decide();
+    const retry = await screen.findByRole('button', {
+      name: 'Повторить переход',
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Решение сохранено');
+    fireEvent.click(retry);
+    await screen.findByText(
+      'Решение сохранено. Открытых жалоб по этим фильтрам больше нет.',
+    );
+    expect(next).toHaveBeenCalledTimes(2);
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+  it('stays on the report when automatic advance is disabled or saving fails', async () => {
+    const update = vi
+      .spyOn(adminService, 'updateReportStatus')
+      .mockRejectedValueOnce(new Error('Решение не сохранено'))
+      .mockResolvedValueOnce(report);
+    const next = vi.spyOn(adminService, 'reports');
+    mount();
+    await decide(false);
+    await screen.findByText('Решение не сохранено');
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(next).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Подтвердить',
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('region', { name: 'Причина жалобы' }),
+    ).toBeVisible();
+    expect(update).toHaveBeenCalledTimes(2);
+  });
+  it('shows the target and description while keeping private context behind an audited request', async () => {
     const context = vi.spyOn(adminService, 'reportContext').mockResolvedValue({
       kind: 'POST',
       appliedLevel: 'REPORTED_ONLY',
@@ -99,7 +244,7 @@ describe('moderator workbench', () => {
     expect(
       within(summary).getByText('Пост · Мошенничество'),
     ).toBeInTheDocument();
-    expect(within(summary).getByText('post-1')).not.toBeVisible();
+    expect(within(summary).getByText('post-1')).toBeVisible();
     expect(screen.getByRole('link', { name: 'К очереди' })).toHaveAttribute(
       'href',
       '/admin/reports?priority=HIGH&page=2',

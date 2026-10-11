@@ -4,6 +4,8 @@ export const auditActionLabels: Record<string, string> = {
   ADMIN_ACCESS_BOOTSTRAPPED: 'Создан первоначальный root',
   ADMIN_ACCOUNT_CREATED: 'Создана учётка сотрудника',
   ADMIN_ACCOUNT_UPDATED: 'Изменён доступ сотрудника',
+  ADMIN_STAFF_SESSION_REVOKED: 'Завершена сессия сотрудника',
+  ADMIN_STAFF_SESSIONS_REVOKED: 'Завершены все сессии сотрудника',
   ADMIN_SHARED_PASSWORD_CHANGED: 'Изменён общий пароль',
   USER_TEMP_BAN: 'Временная блокировка пользователя',
   USER_PERMANENT_BAN: 'Постоянная блокировка пользователя',

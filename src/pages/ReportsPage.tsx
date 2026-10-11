@@ -5,6 +5,7 @@ import {
 } from '../components/moderation/queue-query';
 import { useQueueAutoRefresh } from '../hooks/useQueueAutoRefresh';
 import { BulkDecisionPanel } from '../components/moderation/BulkDecisionPanel';
+import '../styles/report-workbench.css';
 import {
   reportPriorityLabel as priorityLabel,
   reportStatusLabel,
@@ -80,69 +81,61 @@ export function ReportsPage() {
     },
     {
       key: 'type',
-      header: 'Цель',
+      header: 'На что жалоба',
       render: (report) => (
-        <span className="stack-cell">
+        <span className="stack-cell report-queue-target">
           <strong>{targetLabel[report.targetType]}</strong>
-          <small title={report.targetId}>{report.targetId.slice(0, 16)}</small>
+          <span>
+            {report.targetUser
+              ? `@${report.targetUser.username || report.targetUser.publicId}`
+              : report.targetType === 'SUPPORT'
+                ? 'Обращение в поддержку'
+                : 'Автор не определён'}
+          </span>
+          <small title={report.targetId}>
+            {report.targetId || 'ID объекта отсутствует'}
+          </small>
         </span>
       ),
     },
     {
-      key: 'subject',
-      header: 'Автор / субъект',
-      render: (report) =>
-        report.targetUser ? (
-          <span className="stack-cell">
-            <strong>@{report.targetUser.username}</strong>
-            <small>{report.targetUser.publicId}</small>
-          </span>
-        ) : (
-          <span className="data-note">Не определён</span>
-        ),
-    },
-    {
       key: 'reason',
-      header: 'Категория',
+      header: 'Причина жалобы',
       render: (report) => (
         <span className="stack-cell">
           <strong>{reportCategoryLabel(report.category)}</strong>
-          <small className="truncate">{report.reason}</small>
+          <span className="report-queue-reason">
+            {report.reason || 'Описание не указано'}
+          </span>
         </span>
       ),
     },
     {
       key: 'priority',
-      header: 'Приоритет',
+      header: 'Статус / приоритет',
       render: (report) => (
-        <StatusBadge value={priorityLabel[report.priority]} />
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Статус',
-      render: (report) => (
-        <StatusBadge value={reportStatusLabel[report.status]} />
+        <span className="stack-cell">
+          <StatusBadge value={reportStatusLabel[report.status]} />
+          <StatusBadge value={priorityLabel[report.priority]} />
+        </span>
       ),
     },
     {
       key: 'assignee',
-      header: 'Исполнитель',
-      render: (report) => report.assignee?.name || 'Не назначен',
-    },
-    {
-      key: 'age',
-      header: 'Возраст',
+      header: 'Исполнитель / возраст',
       render: (report) => (
-        <span
-          className={
-            report.priority === 'CRITICAL' ||
-            Date.now() - new Date(report.createdAt).getTime() > 86_400_000
-              ? 'text-danger'
-              : ''
-          }
-        >
-          {age(report.createdAt)}
+        <span className="stack-cell">
+          <strong>{report.assignee?.name || 'Не назначен'}</strong>
+          <small
+            className={
+              report.priority === 'CRITICAL' ||
+              Date.now() - new Date(report.createdAt).getTime() > 86_400_000
+                ? 'text-danger'
+                : ''
+            }
+          >
+            {age(report.createdAt)}
+          </small>
         </span>
       ),
     },
@@ -177,6 +170,10 @@ export function ReportsPage() {
             : 'Единая очередь модерации'
         }
       />
+      {typeof (location.state as { notice?: unknown } | null)?.notice ===
+        'string' && (
+        <p role="status">{(location.state as { notice: string }).notice}</p>
+      )}
       <p className="data-note" aria-live="polite">
         {state.updatedAt
           ? `Последнее успешное обновление: ${new Date(state.updatedAt).toLocaleTimeString('ru-RU')}`

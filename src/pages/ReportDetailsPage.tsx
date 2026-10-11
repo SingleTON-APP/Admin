@@ -1,6 +1,7 @@
 import { AuditEventDetails } from '../components/audit/AuditEventDetails';
-import { useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { queueQuery } from '../components/moderation/queue-query';
 import { ActionPanel } from '../components/moderation/ActionPanel';
 import { ReportDeadline } from '../components/moderation/ReportDeadline';
 import { ModerationContextViewer } from '../components/moderation/ModerationContextViewer';
@@ -24,8 +25,76 @@ export function ReportDetailsPage() {
   const admin = useAdmin();
   const { id = '' } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
+  const from = (location.state as { from?: string } | null)?.from;
   const returnTo =
-    (location.state as { from?: string } | null)?.from ?? '/admin/reports';
+    typeof from === 'string' && /^\/admin\/reports(?:\?|$)/.test(from)
+      ? from
+      : '/admin/reports';
+  const [nextFailure, setNextFailure] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+  const nextError = nextFailure?.id === id ? nextFailure.text : '';
+  const [nextBusy, setNextBusy] = useState(false);
+  const nextRequest = useRef<AbortController | null>(null);
+  const activeReport = useRef<string | null>(id);
+  useEffect(() => {
+    activeReport.current = id;
+    return () => {
+      activeReport.current = null;
+      nextRequest.current?.abort();
+      nextRequest.current = null;
+    };
+  }, [id]);
+  async function openNext() {
+    if (activeReport.current !== id) return;
+    nextRequest.current?.abort();
+    const request = new AbortController();
+    nextRequest.current = request;
+    setNextBusy(true);
+    setNextFailure(null);
+    const query = queueQuery(new URLSearchParams(returnTo.split('?')[1] || ''));
+    try {
+      const result = await adminService.reports({
+        ...query,
+        page: 1,
+        pageSize: 1,
+        activeOnly: true,
+        excludeId: id,
+        signal: request.signal,
+        status:
+          query.status === 'OPEN' || query.status === 'IN_REVIEW'
+            ? query.status
+            : undefined,
+      });
+      if (request.signal.aborted) return;
+      const next = result.items[0];
+      navigate(
+        next ? `/admin/reports/${encodeURIComponent(next.id)}` : returnTo,
+        {
+          state: next
+            ? { from: returnTo }
+            : {
+                notice:
+                  'Решение сохранено. Открытых жалоб по этим фильтрам больше нет.',
+              },
+        },
+      );
+    } catch {
+      if (request.signal.aborted) return;
+      setNextFailure({
+        id,
+        text: 'Решение сохранено. Следующую жалобу загрузить не удалось — вернитесь к очереди или повторите переход.',
+      });
+      setReload((value) => value + 1);
+    } finally {
+      if (nextRequest.current === request) {
+        nextRequest.current = null;
+        setNextBusy(false);
+      }
+    }
+  }
   const [reload, setReload] = useState(0);
   const state = useAsync(
     (signal) => adminService.report(id, signal),
@@ -81,6 +150,18 @@ export function ReportDetailsPage() {
           </>
         }
       />
+      {nextError && (
+        <p className="action-result error" role="alert">
+          {nextError}{' '}
+          <button
+            className="button secondary"
+            disabled={nextBusy}
+            onClick={() => void openNext()}
+          >
+            {nextBusy ? 'Переходим…' : 'Повторить переход'}
+          </button>
+        </p>
+      )}
       <div className="report-workspace">
         <ReportSummary report={report} />
         <div className="report-workspace-main">
@@ -115,14 +196,16 @@ export function ReportDetailsPage() {
               </button>
             </p>
           )}
-          <ReportDeadline
-            report={report}
-            onChanged={() => setReload((value) => value + 1)}
-          />
           <ActionPanel
+            key={report.id}
             report={report}
             admin={admin}
             staff={staffState.data ?? []}
+            onChanged={() => setReload((value) => value + 1)}
+            onResolved={openNext}
+          />
+          <ReportDeadline
+            report={report}
             onChanged={() => setReload((value) => value + 1)}
           />
         </aside>

@@ -28,8 +28,10 @@ const reportCategoryLabels: Record<string, string> = {
   forum: 'Форум',
   spam: 'Спам',
   scam: 'Мошенничество',
+  fraud: 'Мошенничество',
+  illegal: 'Запрещённое содержимое',
   abuse: 'Оскорбления или угрозы',
   other: 'Другое',
 };
 export const reportCategoryLabel = (category: string | null | undefined) =>
-  category ? (reportCategoryLabels[category] ?? category) : '—';
+  category ? (reportCategoryLabels[category.toLowerCase()] ?? category) : '—';

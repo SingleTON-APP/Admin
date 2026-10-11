@@ -13,6 +13,15 @@ export interface AdminAccount {
   role: StaffRole;
   disabled: boolean;
   totpEnabled?: boolean;
+  activeSessionCount?: number;
+}
+export interface AdminStaffSession {
+  id: string;
+  ip: string;
+  userAgent: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
 }
 async function sessionRequest(path: string, init?: RequestInit) {
   const session = await request<AdminSession>(`/admin/auth/${path}`, init);
@@ -67,6 +76,19 @@ export const adminAuthService = {
       method: 'POST',
       body: JSON.stringify({ password }),
     }),
+  staffSessions: (id: string, signal?: AbortSignal) =>
+    request<{ items: AdminStaffSession[] }>(
+      `/admin/auth/staff/${encodeURIComponent(id)}/sessions`,
+      { signal },
+    ),
+  revokeStaffSessions: (id: string, reason: string, sessionId?: string) =>
+    request<{ success: boolean; revokedCount: number }>(
+      `/admin/auth/staff/${encodeURIComponent(id)}/sessions/revoke`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason, ...(sessionId ? { sessionId } : {}) }),
+      },
+    ),
   resetTotp: (id: string, password: string, reason: string) =>
     request(`/admin/auth/staff/${encodeURIComponent(id)}/totp/reset`, {
       method: 'POST',

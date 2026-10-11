@@ -34,6 +34,28 @@ export function ReportSummary({ report }: { report: Report }) {
         </div>
         <StatusBadge value={reportStatusLabel[report.status]} />
       </div>
+      <div className="report-target-summary">
+        <span className="section-label">На что жалоба</span>
+        <strong>
+          {reportTargetLabel[report.targetType]}
+          {report.targetUser ? (
+            <>
+              {' '}
+              ·{' '}
+              <Link
+                to={`/admin/users/${encodeURIComponent(report.targetUser.id || report.targetUser.publicId)}`}
+              >
+                @{report.targetUser.username || report.targetUser.publicId}
+              </Link>
+            </>
+          ) : report.targetType === 'SUPPORT' ? (
+            ' · обращение в поддержку'
+          ) : (
+            ' · автор не определён'
+          )}
+        </strong>
+        <IDDisplay value={report.targetId || 'ID объекта отсутствует'} />
+      </div>
       <p className="report-reason">{report.reason || 'Описание не указано.'}</p>
       <div className="report-summary-meta">
         <span>
@@ -75,12 +97,6 @@ export function ReportSummary({ report }: { report: Report }) {
             <dt>ID жалобы</dt>
             <dd>
               <IDDisplay value={report.id} />
-            </dd>
-          </div>
-          <div>
-            <dt>ID объекта</dt>
-            <dd>
-              <IDDisplay value={report.targetId} />
             </dd>
           </div>
           {report.chatId && (
