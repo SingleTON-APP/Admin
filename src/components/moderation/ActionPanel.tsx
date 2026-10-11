@@ -28,29 +28,37 @@ export function ActionPanel({
   admin,
   staff,
   onChanged,
+  onResolved,
 }: {
   report: Report;
   admin: StaffIdentity;
   staff: StaffSummary[];
   onChanged: () => void;
+  onResolved?: () => Promise<void>;
 }) {
   const navigate = useNavigate();
   const [pending, setPending] = useState<Pending | null>(null);
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
+  const [advance, setAdvance] = useState(true);
+  const closed = report.status === 'RESOLVED' || report.status === 'REJECTED';
   const [result, setResult] = useState<{
     tone: 'success' | 'error';
     text: string;
   } | null>(null);
-  const run = async (key: string, operation: () => Promise<unknown>) => {
+  const run = async (
+    key: string,
+    operation: () => Promise<unknown>,
+    after: () => void | Promise<void> = onChanged,
+  ) => {
     if (busy) return false;
     setBusy(key);
     setResult(null);
     try {
       await operation();
       setResult({ tone: 'success', text: 'Действие выполнено' });
-      onChanged();
+      await after();
       return true;
     } catch (error) {
       setResult({
@@ -86,20 +94,23 @@ export function ActionPanel({
       if (succeeded) setPending(null);
       return;
     }
-    const succeeded = await run('confirmation', () =>
-      value.kind === 'action'
-        ? adminService.moderateReportTarget(
-            report.id,
-            value.action,
-            reason.trim(),
-            value.durationDays,
-            value.idempotencyKey,
-          )
-        : adminService.updateReportStatus(
-            report.id,
-            value.status,
-            reason.trim(),
-          ),
+    const succeeded = await run(
+      'confirmation',
+      () =>
+        value.kind === 'action'
+          ? adminService.moderateReportTarget(
+              report.id,
+              value.action,
+              reason.trim(),
+              value.durationDays,
+              value.idempotencyKey,
+            )
+          : adminService.updateReportStatus(
+              report.id,
+              value.status,
+              reason.trim(),
+            ),
+      value.kind === 'status' && advance && onResolved ? onResolved : onChanged,
     );
     if (succeeded) {
       setPending(null);
@@ -162,7 +173,7 @@ export function ActionPanel({
         <h3>Решение</h3>
         <button
           className="button secondary full-width"
-          disabled={!!busy || report.status === 'REJECTED'}
+          disabled={!!busy || closed}
           onClick={() =>
             setPending({
               kind: 'status',
@@ -175,7 +186,7 @@ export function ActionPanel({
         </button>
         <button
           className="button primary full-width"
-          disabled={!!busy || report.status === 'RESOLVED'}
+          disabled={!!busy || closed}
           onClick={() =>
             setPending({
               kind: 'status',
@@ -388,6 +399,17 @@ export function ActionPanel({
               placeholder="Минимум 10 символов"
             />
           </label>
+          {pending?.kind === 'status' && onResolved && (
+            <label className="decision-next-option">
+              <input
+                type="checkbox"
+                checked={advance}
+                onChange={(event) => setAdvance(event.target.checked)}
+                disabled={!!busy}
+              />
+              После решения открыть следующую открытую жалобу
+            </label>
+          )}
           <div className="dialog-actions">
             <button
               type="button"

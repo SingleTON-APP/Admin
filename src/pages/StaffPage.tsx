@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { StaffSessionsDialog } from '../components/access/StaffSessionsDialog';
 import { Dialog } from '../components/ui/Dialog';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import {
@@ -29,9 +31,28 @@ function StaffManagement({ actorId }: { actorId: string }) {
   const [failure, setFailure] = useState('');
   const [busy, setBusy] = useState(false);
   const [resetTarget, setResetTarget] = useState<AdminAccount | null>(null);
+  const [sessionsTarget, setSessionsTarget] = useState<AdminAccount | null>(
+    null,
+  );
   const state = useAsync((signal) => adminAuthService.staff(signal), [reload]);
   const account = selected && selected !== 'new' ? selected : null;
   const columns: Column<AdminAccount>[] = [
+    {
+      key: 'sessions',
+      header: 'Сессии админки',
+      render: (row) =>
+        row.userId === actorId ? (
+          <Link to="/admin/access">Мои сессии</Link>
+        ) : (
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => setSessionsTarget(row)}
+          >
+            {row.activeSessionCount ?? '—'} · Посмотреть сессии
+          </button>
+        ),
+    },
     {
       key: 'username',
       header: 'Логин',
@@ -131,7 +152,7 @@ function StaffManagement({ actorId }: { actorId: string }) {
       <PageHeader
         eyebrow="Доступ"
         title="Учётные записи сотрудников"
-        description="Создание, роли и смена паролей доступны только корневому администратору."
+        description="Создание, роли и сессии доступны только корневому администратору. Смена роли, пароля и отключение учётной записи сбрасывают все её сессии."
         actions={
           <button
             className="button primary"
@@ -144,6 +165,14 @@ function StaffManagement({ actorId }: { actorId: string }) {
           </button>
         }
       />
+      {sessionsTarget && (
+        <StaffSessionsDialog
+          key={sessionsTarget.id}
+          account={sessionsTarget}
+          onClose={() => setSessionsTarget(null)}
+          onChanged={() => setReload((value) => value + 1)}
+        />
+      )}
       {state.loading ? (
         <LoadingState />
       ) : state.error || !state.data ? (

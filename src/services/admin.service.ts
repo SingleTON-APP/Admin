@@ -83,6 +83,8 @@ const reportDetails = (value: RawReportDetails): ReportDetails => ({
 });
 
 export interface ReportsQuery extends PageRequest {
+  activeOnly?: boolean;
+  excludeId?: string;
   targetType?: ReportTargetType;
   status?: ReportStatus;
   priority?: ReportPriority;
@@ -170,6 +172,9 @@ export const adminService = {
         limit: input.pageSize,
         search: input.search,
         targetType: input.targetType,
+        activeOnly:
+          input.activeOnly === undefined ? undefined : String(input.activeOnly),
+        excludeId: input.excludeId,
         status: input.status,
         priority: input.priority,
         assigneeId: input.assigneeId,
