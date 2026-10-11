@@ -80,7 +80,12 @@ function mount(from?: string) {
 }
 function QueueResult() {
   const location = useLocation();
-  return <p>{location.state?.notice}</p>;
+  return (
+    <>
+      <p>Очередь:</p>
+      <p>{location.state?.notice}</p>
+    </>
+  );
 }
 async function decide(advance = true) {
   fireEvent.click(
@@ -96,6 +101,26 @@ async function decide(advance = true) {
 afterEach(() => vi.restoreAllMocks());
 
 describe('moderator workbench', () => {
+  it('does not pull the moderator back after they leave while a decision is saving', async () => {
+    let complete!: (value: ReportDetails) => void;
+    vi.spyOn(adminService, 'updateReportStatus').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const next = vi.spyOn(adminService, 'reports');
+    mount();
+    await decide();
+    fireEvent.click(screen.getByRole('link', { name: 'К очереди' }));
+    await screen.findByText('Очередь:');
+    complete(report);
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(screen.getByText('Очередь:')).toBeVisible();
+  });
   it('saves the decision before advancing and preserves queue filters and ordering', async () => {
     const update = vi
       .spyOn(adminService, 'updateReportStatus')

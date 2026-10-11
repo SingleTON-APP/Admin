@@ -38,13 +38,17 @@ export function ReportDetailsPage() {
   const nextError = nextFailure?.id === id ? nextFailure.text : '';
   const [nextBusy, setNextBusy] = useState(false);
   const nextRequest = useRef<AbortController | null>(null);
+  const activeReport = useRef<string | null>(id);
   useEffect(() => {
+    activeReport.current = id;
     return () => {
+      activeReport.current = null;
       nextRequest.current?.abort();
       nextRequest.current = null;
     };
   }, [id]);
   async function openNext() {
+    if (activeReport.current !== id) return;
     nextRequest.current?.abort();
     const request = new AbortController();
     nextRequest.current = request;
