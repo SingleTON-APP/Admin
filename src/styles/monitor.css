@@ -283,3 +283,24 @@
     gap: 24px;
   }
 }
+
+@media (max-width: 900px) {
+  .is-compact .sidebar-health-head,
+  .is-compact .sidebar-health-footer {
+    display: flex;
+  }
+  .is-compact .sidebar-health .health-freshness,
+  .is-compact .sidebar-health .environment {
+    display: block;
+  }
+  .is-compact .sidebar-health .system-badge > span:first-child {
+    display: flex;
+  }
+  .is-compact .sidebar-health .system-badge {
+    justify-content: space-between;
+  }
+  .is-compact .sidebar-health .status {
+    padding: 2px 5px;
+    font-size: 9px;
+  }
+}

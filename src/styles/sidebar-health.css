@@ -38,6 +38,7 @@
     padding: 2px 0;
   }
 }
+
 .sidebar-health .sidebar-health-services.health-services-stale {
   border-left: 2px solid var(--warning);
   padding-left: 5px;
@@ -152,5 +153,23 @@
   }
   .sidebar .nav-group a {
     min-height: 26px;
+  }
+}
+
+@media (max-width: 900px) {
+  .is-compact .sidebar-health-services .sidebar-health-row {
+    grid-template-columns: 6px minmax(0, 1fr) auto;
+    justify-content: stretch;
+  }
+  .is-compact .sidebar-health-services .health-row-name,
+  .is-compact .sidebar-health-services .health-row-latency {
+    display: block;
+  }
+  .is-compact .sidebar-health-all {
+    font-size: 10px;
+    text-align: left;
+  }
+  .is-compact .sidebar-health-all::after {
+    content: none;
   }
 }

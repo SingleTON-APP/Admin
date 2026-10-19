@@ -1,5 +1,6 @@
 .sidebar > nav {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .sidebar .nav-group {
   margin-bottom: 4px;
@@ -37,4 +38,16 @@
 }
 .is-compact .sidebar .nav-group-toggle i {
   font-size: 17px;
+}
+
+@media (max-width: 900px) {
+  .is-compact .sidebar .nav-group-toggle {
+    justify-content: space-between;
+  }
+  .is-compact .sidebar .nav-group-toggle span {
+    display: inline;
+  }
+  .is-compact .sidebar .nav-group-toggle i {
+    font-size: inherit;
+  }
 }

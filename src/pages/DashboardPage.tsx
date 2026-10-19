@@ -15,6 +15,7 @@ import { useAdmin } from '../features/admin-access/AdminContext';
 import { useAsync } from '../hooks/useAsync';
 import { adminService } from '../services/admin.service';
 import { ErrorState, PageHeader } from '../components/ui/Primitives';
+import { Icon } from '../components/ui/Icon';
 
 export function DashboardPage() {
   const admin = useAdmin();
@@ -61,6 +62,38 @@ export function DashboardPage() {
           </>
         }
       />
+      <nav className="dashboard-shortcuts" aria-label="Быстрые действия">
+        <Link to="/admin/reports?view=mine">
+          <span className="shortcut-icon">
+            <Icon name="inbox" />
+          </span>
+          <span>
+            <strong>Моя очередь</strong>
+            <small>Продолжить обработку назначенных жалоб</small>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+        <Link to="/admin/users">
+          <span className="shortcut-icon">
+            <Icon name="users" />
+          </span>
+          <span>
+            <strong>Найти пользователя</strong>
+            <small>Проверить аккаунт, статус и историю</small>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+        <Link to="/admin/monitor">
+          <span className="shortcut-icon">
+            <Icon name="activity" />
+          </span>
+          <span>
+            <strong>Состояние системы</strong>
+            <small>Открыть метрики и доступность сервисов</small>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      </nav>
       {state.loading ? (
         <DashboardSkeleton />
       ) : state.error || !data ? (

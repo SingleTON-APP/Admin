@@ -41,25 +41,24 @@ describe('compact sidebar groups', () => {
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label')),
     ).toEqual([
-      'Рабочее пространство',
-      'Мониторинг',
+      'Главное',
+      'Наблюдение',
       'Модерация',
-      'Пользователи',
       'Контент',
-      'Управление',
+      'Администрирование',
       'Доступ',
       'Помощь',
     ]);
     fireEvent.click(nav.getByRole('button', { name: 'Контент' }));
     expect(nav.getByRole('link', { name: 'Новости сайта' })).toBeVisible();
-    fireEvent.click(nav.getByRole('button', { name: 'Мониторинг' }));
-    expect(nav.getByRole('button', { name: 'Мониторинг' })).toHaveAttribute(
+    fireEvent.click(nav.getByRole('button', { name: 'Наблюдение' }));
+    expect(nav.getByRole('button', { name: 'Наблюдение' })).toHaveAttribute(
       'aria-expanded',
       'true',
     );
     expect(nav.queryByRole('link', { name: 'Обзор' })).not.toBeInTheDocument();
     fireEvent.click(nav.getByRole('button', { name: 'Модерация' }));
-    expect(nav.getByRole('button', { name: 'Мониторинг' })).toHaveAttribute(
+    expect(nav.getByRole('button', { name: 'Наблюдение' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
