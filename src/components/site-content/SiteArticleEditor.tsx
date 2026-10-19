@@ -177,6 +177,13 @@ export function SiteArticleEditor({
 
   return (
     <section className="site-editor card">
+      <header className="site-editor-section-head">
+        <span>1</span>
+        <div>
+          <h3>Основная информация</h3>
+          <p>Заголовок и анонс увидят читатели на карточке новости.</p>
+        </div>
+      </header>
       <div className="site-editor-title">
         <label htmlFor="site-news-title">Заголовок статьи</label>
         <input
@@ -190,6 +197,27 @@ export function SiteArticleEditor({
         />
       </div>
 
+      <div className="site-editor-description">
+        <label htmlFor="site-news-description">Краткое описание</label>
+        <textarea
+          id="site-news-description"
+          value={description}
+          onChange={(event) => onDescriptionChange(event.target.value)}
+          placeholder="Короткий анонс для карточек на главной"
+          rows={3}
+          maxLength={600}
+          disabled={disabled}
+          required
+        />
+      </div>
+
+      <header className="site-editor-section-head">
+        <span>2</span>
+        <div>
+          <h3>Обложка</h3>
+          <p>Горизонтальное изображение для карточки и страницы новости.</p>
+        </div>
+      </header>
       <div className="site-editor-banner">
         {banner ? (
           <div className="site-banner-preview">
@@ -226,19 +254,13 @@ export function SiteArticleEditor({
         />
       </div>
 
-      <div className="site-editor-description">
-        <label htmlFor="site-news-description">Краткое описание</label>
-        <textarea
-          id="site-news-description"
-          value={description}
-          onChange={(event) => onDescriptionChange(event.target.value)}
-          placeholder="Короткий анонс для карточек на главной"
-          rows={3}
-          maxLength={600}
-          disabled={disabled}
-          required
-        />
-      </div>
+      <header className="site-editor-section-head site-editor-content-head">
+        <span>3</span>
+        <div>
+          <h3>Текст статьи</h3>
+          <p>Оформите материал и добавьте изображения при необходимости.</p>
+        </div>
+      </header>
 
       <div
         className="site-editor-toolbar"

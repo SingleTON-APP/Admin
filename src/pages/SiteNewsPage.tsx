@@ -142,6 +142,10 @@ export function SiteNewsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SiteNewsItem | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [listQuery, setListQuery] = useState('');
+  const [listFilter, setListFilter] = useState<'ALL' | 'PUBLISHED' | 'DRAFT'>(
+    'ALL',
+  );
   const [draftKey, setDraftKey] = useState(() => crypto.randomUUID());
   const [lastSaved, setLastSaved] = useState(() =>
     JSON.stringify(emptyDraft()),
@@ -154,6 +158,27 @@ export function SiteNewsPage() {
     () => items.find((item) => item.id === selectedId) ?? null,
     [items, selectedId],
   );
+  const filteredItems = useMemo(() => {
+    const query = listQuery.trim().toLocaleLowerCase('ru-RU');
+    return items.filter((item) => {
+      const matchesFilter =
+        listFilter === 'ALL' ||
+        (listFilter === 'DRAFT'
+          ? item.status === 'DRAFT'
+          : item.status !== 'DRAFT');
+      const matchesQuery =
+        !query ||
+        item.title.toLocaleLowerCase('ru-RU').includes(query) ||
+        item.description.toLocaleLowerCase('ru-RU').includes(query);
+      return matchesFilter && matchesQuery;
+    });
+  }, [items, listFilter, listQuery]);
+  const completedFields = [
+    draft.title.trim(),
+    draft.description.trim(),
+    draft.image,
+    draft.content.trim(),
+  ].filter(Boolean).length;
   const meaningful = Boolean(
     draft.title.trim() ||
     draft.description.trim() ||
@@ -471,13 +496,48 @@ export function SiteNewsPage() {
             </button>
           </div>
 
+          <div className="site-news-list-tools">
+            <input
+              type="search"
+              value={listQuery}
+              onChange={(event) => setListQuery(event.target.value)}
+              placeholder="Найти публикацию"
+              aria-label="Найти публикацию"
+            />
+            <div className="site-news-filter" aria-label="Фильтр публикаций">
+              {(
+                [
+                  ['ALL', 'Все'],
+                  ['PUBLISHED', 'На сайте'],
+                  ['DRAFT', 'Черновики'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={listFilter === value ? 'active' : undefined}
+                  aria-pressed={listFilter === value}
+                  onClick={() => setListFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {loading ? (
             <LoadingState />
-          ) : items.length === 0 ? (
-            <EmptyState title="Новостей пока нет" />
+          ) : filteredItems.length === 0 ? (
+            <EmptyState
+              title={
+                items.length
+                  ? 'По вашему запросу ничего нет'
+                  : 'Новостей пока нет'
+              }
+            />
           ) : (
             <div className="site-news-list">
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <article
                   key={item.id}
                   className={`site-news-item ${selectedId === item.id ? 'active' : ''}`}
@@ -486,11 +546,16 @@ export function SiteNewsPage() {
                     type="button"
                     onClick={() => startEdit(item)}
                     disabled={busy}
+                    aria-label={`${item.title || 'Без заголовка'} — ${item.status === 'DRAFT' ? 'черновик' : 'опубликовано'}`}
                   >
+                    <span
+                      className={`site-news-status ${item.status === 'DRAFT' ? 'is-draft' : 'is-published'}`}
+                    >
+                      {item.status === 'DRAFT' ? 'Черновик' : 'На сайте'}
+                    </span>
                     <strong>{item.title || 'Без заголовка'}</strong>
                     <span>{item.description}</span>
                     <small>
-                      {item.status === 'DRAFT' ? 'Черновик' : 'Опубликовано'} ·{' '}
                       {item.date} · обновлено{' '}
                       {new Date(`${item.updated_at}Z`).toLocaleDateString(
                         'ru-RU',
@@ -529,23 +594,52 @@ export function SiteNewsPage() {
                     ? 'Редактирование публикации'
                     : 'Подготовка публикации'}
               </h2>
+              <p className="site-news-form-context">
+                {selected
+                  ? 'Изменения относятся к выбранной публикации.'
+                  : 'Заполните обязательные поля и опубликуйте материал.'}
+              </p>
             </div>
-            <label>
-              <span>Дата на карточке</span>
-              <input
-                value={draft.date}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    date: event.target.value,
-                  }))
-                }
-                placeholder="09 окт."
-                maxLength={40}
-                disabled={saving}
-                required
-              />
-            </label>
+            <div className="site-news-form-meta">
+              <div className="site-news-completion">
+                <span>
+                  Готовность <strong>{completedFields}/4</strong>
+                </span>
+                <i>
+                  <b style={{ width: `${completedFields * 25}%` }} />
+                </i>
+              </div>
+              <label>
+                <span>Дата на карточке</span>
+                <input
+                  value={draft.date}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      date: event.target.value,
+                    }))
+                  }
+                  placeholder="09 окт."
+                  maxLength={40}
+                  disabled={saving}
+                  required
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="site-editor-steps" aria-label="Этапы подготовки">
+            <span
+              className={draft.title && draft.description ? 'done' : 'active'}
+            >
+              <i>1</i> Основное
+            </span>
+            <span className={draft.image ? 'done' : undefined}>
+              <i>2</i> Обложка
+            </span>
+            <span className={draft.content ? 'done' : undefined}>
+              <i>3</i> Текст статьи
+            </span>
           </div>
 
           <div
