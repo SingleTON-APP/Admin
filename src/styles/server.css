@@ -1,0 +1,143 @@
+.server-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding: 12px 17px;
+  color: var(--text-secondary);
+}
+.server-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.server-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 15px 17px;
+}
+.server-tile > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.server-tile strong {
+  font-size: 22px;
+  font-weight: 600;
+}
+.server-tile small {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.server-tile small.server-tile-issue {
+  color: var(--warning);
+}
+.server-section {
+  margin-bottom: 15px;
+}
+.card.server-section {
+  padding: 15px 17px;
+  overflow-x: auto;
+}
+.server-section h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.server-fs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.server-fs th {
+  padding: 0 10px 8px 0;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: left;
+}
+.server-fs td {
+  padding: 9px 10px 9px 0;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+}
+.server-fs td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.server-meter {
+  width: 140px;
+  max-width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+.server-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.server-meter-success span {
+  background: var(--success);
+}
+.server-meter-warning span {
+  background: var(--warning);
+}
+.server-meter-danger span {
+  background: var(--danger);
+}
+.server-disks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+}
+.server-disk {
+  padding: 15px 17px;
+}
+.server-disk header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.server-disk h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.server-disk header p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  word-break: break-all;
+}
+.server-issues {
+  margin: 0 0 10px;
+  padding: 8px 10px 8px 24px;
+  border-radius: var(--radius);
+  background: var(--surface-secondary);
+  color: var(--warning);
+  font-size: 12px;
+}
+.server-disk dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+.server-disk dt {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.server-disk dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+@media (max-width: 640px) {
+  .server-disks {
+    grid-template-columns: 1fr;
+  }
+}

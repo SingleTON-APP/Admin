@@ -148,6 +148,14 @@ export const navigation: NavigationItem[] = [
     roles: managers,
   },
   {
+    path: '/admin/server',
+    title: 'Сервер',
+    description: 'Диски, ресурсы и хранилище',
+    group: 'Администрирование',
+    icon: 'system',
+    roles: managers,
+  },
+  {
     path: '/admin/access',
     title: 'Мои сессии и 2FA',
     description: 'Активные устройства и защита входа',
