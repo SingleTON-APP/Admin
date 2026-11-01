@@ -10,6 +10,7 @@ import { ReportsPage } from '../pages/ReportsPage';
 import { StaffPage } from '../pages/StaffPage';
 import { SystemPage } from '../pages/SystemPage';
 import { ServerPage } from '../pages/ServerPage';
+import { AppVersionsPage } from '../pages/AppVersionsPage';
 import { SiteNewsPage } from '../pages/SiteNewsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
@@ -100,6 +101,7 @@ export const router = createBrowserRouter([
       { path: '/admin/audit', element: <AuditPage /> },
       { path: '/admin/system', element: <SystemPage /> },
       { path: '/admin/server', element: <ServerPage /> },
+      { path: '/admin/app-versions', element: <AppVersionsPage /> },
       { path: '/admin/site/news', element: <SiteNewsPage /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
     ],
