@@ -214,8 +214,10 @@ describe('moderator workbench', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
     expect(next).not.toHaveBeenCalled();
+    // The report reloads after a successful save; wait for it instead of
+    // reading the DOM in the same tick the dialog closes.
     expect(
-      screen.getByRole('region', { name: 'Причина жалобы' }),
+      await screen.findByRole('region', { name: 'Причина жалобы' }),
     ).toBeVisible();
     expect(update).toHaveBeenCalledTimes(2);
   });

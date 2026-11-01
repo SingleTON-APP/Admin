@@ -7,6 +7,20 @@ interface Assessment {
   issues: string[];
 }
 
+export interface InfraDiskTrend {
+  historyDays: number;
+  since: string | null;
+  badSectorsDelta: {
+    day: number | null;
+    week: number | null;
+    month: number | null;
+  };
+  crcDeltaWeek: number | null;
+  temperature: Array<{ day: string; max: number }>;
+  ssdYearsLeft: number | null;
+  ssdForecastBasis: 'RECENT_WRITES' | 'LIFETIME' | null;
+}
+
 export interface InfraDisk extends Assessment {
   device: string;
   kind: 'HDD' | 'NVME';
@@ -30,6 +44,8 @@ export interface InfraDisk extends Assessment {
   ioUtilPercent: number | null;
   role: 'SYSTEM' | 'STORAGE' | 'OTHER';
   mountpoints: string[];
+  /** Отсутствует у старого бэкенда; null — история недоступна. */
+  trend?: InfraDiskTrend | null;
 }
 
 export interface InfraFilesystem extends Assessment {
