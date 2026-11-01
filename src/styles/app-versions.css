@@ -1,0 +1,82 @@
+.app-version-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.app-version-card,
+.app-version-installed {
+  padding: 16px 18px;
+}
+.app-version-card h2,
+.app-version-installed h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.app-version-card fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.app-version-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.app-version-card input,
+.app-version-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+.app-version-card textarea {
+  min-height: 60px;
+}
+.app-version-card small {
+  font-size: 11px;
+  line-height: 1.4;
+}
+.app-version-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.app-version-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.app-version-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+.app-version-card button {
+  align-self: flex-start;
+}
+.app-version-table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.app-version-table th {
+  padding: 0 10px 8px 0;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: left;
+}
+.app-version-table td {
+  padding: 8px 10px 8px 0;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .app-version-row {
+    grid-template-columns: 1fr;
+  }
+}

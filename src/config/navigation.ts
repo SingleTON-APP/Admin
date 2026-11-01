@@ -156,6 +156,14 @@ export const navigation: NavigationItem[] = [
     roles: managers,
   },
   {
+    path: '/admin/app-versions',
+    title: 'Версии приложений',
+    description: 'Обновление iOS и Android',
+    group: 'Администрирование',
+    icon: 'system',
+    roles: managers,
+  },
+  {
     path: '/admin/access',
     title: 'Мои сессии и 2FA',
     description: 'Активные устройства и защита входа',
