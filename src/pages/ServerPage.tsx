@@ -1,9 +1,10 @@
 import { formatBytes } from '../components/dashboard/dashboard-format';
-import { PageHeader } from '../components/ui/Primitives';
+import { PageHeader, Sparkline } from '../components/ui/Primitives';
 import { usePolling } from '../hooks/usePolling';
 import {
   infrastructureService,
   type InfraDisk,
+  type InfraDiskTrend,
   type InfrastructureSnapshot,
   type InfraStatus,
 } from '../services/infrastructure.service';
@@ -208,6 +209,7 @@ function Space({ data }: { data: InfrastructureSnapshot }) {
   );
   const storageStatus =
     data.storage.status === 'OK' ? storageFsStatus : data.storage.status;
+  if (!root && !cap) return null;
   return (
     <section className="server-section">
       <h2>Место на дисках</h2>
@@ -388,6 +390,52 @@ function Resources({ data }: { data: InfrastructureSnapshot }) {
   );
 }
 
+const plural = (n: number, one: string, few: string, many: string) => {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+};
+
+/** Одна строка «что меняется со временем» для карточки диска. */
+function trendSummary(disk: InfraDisk, trend: InfraDiskTrend) {
+  if (disk.kind === 'NVME') {
+    // Меньше двух лет — это уже предупреждение в списке проблем.
+    if (trend.ssdYearsLeft === null || trend.ssdYearsLeft < 2) return null;
+    const years = trend.ssdYearsLeft;
+    return {
+      tone: 'neutral',
+      text:
+        years >= 20
+          ? `Ресурса записи хватит надолго: ${years >= 50 ? 'больше 50 лет' : `около ${ru(years)} лет`} при ${trend.ssdForecastBasis === 'RECENT_WRITES' ? 'нынешней' : 'обычной для него'} нагрузке.`
+          : `Ресурса записи хватит примерно на ${ru(years, 1)} г. при ${trend.ssdForecastBasis === 'RECENT_WRITES' ? 'нынешней' : 'обычной для него'} нагрузке.`,
+    };
+  }
+  const { day, week, month } = trend.badSectorsDelta;
+  // Рост уже есть в списке проблем карточки — не повторяем.
+  if ([day, week, month].some((v) => v !== null && v > 0)) return null;
+  const window =
+    month !== null
+      ? 'за месяц'
+      : week !== null
+        ? 'за неделю'
+        : day !== null
+          ? 'за сутки'
+          : null;
+  if (window) return { tone: 'success', text: `Изменений ${window} нет.` };
+  const since = trend.since
+    ? new Date(`${trend.since}T00:00:00`).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+      })
+    : 'сегодня';
+  return {
+    tone: 'neutral',
+    text: `Наблюдение идёт с ${since}: динамика появится через сутки, недельная — через ${7 - Math.min(6, trend.historyDays)} ${plural(7 - Math.min(6, trend.historyDays), 'день', 'дня', 'дней')}.`,
+  };
+}
+
 function DiskCard({ disk, name }: { disk: InfraDisk; name: string }) {
   const badSectors =
     (disk.reallocatedSectors ?? 0) +
@@ -490,6 +538,15 @@ function DiskCard({ disk, name }: { disk: InfraDisk; name: string }) {
           </b>
         </li>
       </ul>
+      {disk.trend &&
+        (() => {
+          const summary = trendSummary(disk, disk.trend);
+          return summary ? (
+            <p className={`server-trend server-trend-${summary.tone}`}>
+              {summary.text}
+            </p>
+          ) : null;
+        })()}
       {disk.issues.length > 0 && (
         <ul className="server-issues">
           {disk.issues.map((issue) => (
@@ -515,6 +572,17 @@ function DiskCard({ disk, name }: { disk: InfraDisk; name: string }) {
               дисков его могут обнулять.
             </p>
           </div>
+          {disk.trend && disk.trend.temperature.length >= 2 && (
+            <div>
+              <dt>Температура за 30 дней</dt>
+              <dd>
+                {ru(Math.min(...disk.trend.temperature.map((t) => t.max)))}–
+                {ru(Math.max(...disk.trend.temperature.map((t) => t.max)))}
+                {'\u00a0°C'}
+              </dd>
+              <Sparkline data={disk.trend.temperature.map((t) => t.max)} />
+            </div>
+          )}
           <div>
             <dt>Загрузка сейчас</dt>
             <dd>{num(disk.ioUtilPercent, '%')}</dd>

@@ -204,6 +204,72 @@ describe('server infrastructure page', () => {
     ).toBeNull();
   });
 
+  it('shows what changes over time for each disk', async () => {
+    const trend = {
+      historyDays: 40,
+      since: '2026-09-20',
+      badSectorsDelta: { day: 0, week: 0, month: 0 },
+      crcDeltaWeek: 0,
+      temperature: [
+        { day: '2026-10-30', max: 29 },
+        { day: '2026-10-31', max: 33 },
+      ],
+      ssdYearsLeft: null,
+      ssdForecastBasis: null,
+    };
+    vi.spyOn(infrastructureService, 'snapshot').mockResolvedValue({
+      ...snapshot,
+      disks: [
+        hdd('sda', '/mnt/minio-d1', { trend }),
+        hdd('sdb', '/mnt/minio-d2', {
+          trend: { ...trend, badSectorsDelta: { day: 1, week: 4, month: 4 } },
+        }),
+        {
+          ...(snapshot.disks.find((d) => d.role === 'SYSTEM') as InfraDisk),
+          trend: {
+            ...trend,
+            ssdYearsLeft: 51.8,
+            ssdForecastBasis: 'LIFETIME',
+          },
+        },
+        hdd('sdc', '/mnt/media-d3', {
+          trend: {
+            ...trend,
+            historyDays: 1,
+            since: '2026-11-01',
+            badSectorsDelta: { day: null, week: null, month: null },
+          },
+        }),
+      ],
+    });
+    renderPage();
+    const stable = await screen.findByRole('article', {
+      name: 'Диск хранилища 2',
+    });
+    expect(within(stable).getByText('Изменений за месяц нет.')).toBeVisible();
+    fireEvent.click(within(stable).getByText('Подробнее'));
+    expect(
+      within(stable).getByText(
+        (_, el) => el?.tagName === 'DD' && el.textContent === '29–33\u00a0°C',
+      ),
+    ).toBeVisible();
+    expect(
+      within(
+        screen.getByRole('article', { name: 'Диск хранилища 3' }),
+      ).queryByText(/Плохих секторов стало больше/),
+    ).toBeNull();
+    expect(
+      within(screen.getByRole('article', { name: 'Системный SSD' })).getByText(
+        /Ресурса записи хватит надолго: больше 50 лет/,
+      ),
+    ).toBeVisible();
+    expect(
+      within(
+        screen.getByRole('article', { name: 'Диск хранилища 1' }),
+      ).getByText(/Наблюдение идёт с 1 ноября: .* недельная — через 6 дней/),
+    ).toBeVisible();
+  });
+
   it('formats byte sizes', () => {
     expect(formatBytes(512)).toBe('512 Б');
     expect(formatBytes(7.3 * T)).toBe('7,3 ТБ');
