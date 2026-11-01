@@ -1,16 +1,51 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { formatBytes } from '../components/dashboard/dashboard-format';
 import {
   infrastructureService,
+  type InfraDisk,
   type InfrastructureSnapshot,
 } from '../services/infrastructure.service';
-import { formatBytes } from '../components/dashboard/dashboard-format';
 import { ServerPage } from './ServerPage';
+
+const G = 1024 ** 3;
+const T = 1024 ** 4;
+const hdd = (
+  device: string,
+  mount: string,
+  over: Partial<InfraDisk> = {},
+): InfraDisk => ({
+  device,
+  kind: 'HDD',
+  model: 'ST8000NM012A',
+  serial: `S-${device}`,
+  smartPassed: true,
+  temperatureC: 30,
+  powerOnHours: 8760,
+  reallocatedSectors: 0,
+  pendingSectors: 0,
+  offlineUncorrectable: 0,
+  reportedUncorrect: 0,
+  crcErrors: 0,
+  percentageUsed: null,
+  availableSpare: null,
+  availableSpareThreshold: null,
+  mediaErrors: null,
+  criticalWarning: null,
+  bytesWritten: null,
+  capacityBytes: 8_001_563_222_016,
+  ioUtilPercent: 5,
+  role: 'STORAGE',
+  mountpoints: [mount],
+  status: 'OK',
+  issues: [],
+  ...over,
+});
 
 const snapshot: InfrastructureSnapshot = {
   generatedAt: '2026-11-01T12:00:00Z',
-  status: 'CRITICAL',
+  status: 'OK',
   source: { prometheus: 'OK', nodeExporter: true, smartExporter: true },
   host: {
     status: 'OK',
@@ -20,10 +55,10 @@ const snapshot: InfrastructureSnapshot = {
     load1: 1.2,
     load5: 1,
     load15: 0.9,
-    memoryTotalBytes: 64 * 1024 ** 3,
-    memoryAvailableBytes: 32 * 1024 ** 3,
-    swapTotalBytes: 1024 ** 3,
-    swapFreeBytes: 1024 ** 3,
+    memoryTotalBytes: 64 * G,
+    memoryAvailableBytes: 40 * G,
+    swapTotalBytes: G,
+    swapFreeBytes: 0.01 * G,
     uptimeSeconds: 3 * 86_400 + 4 * 3_600,
     cpuTemperatureC: 41,
   },
@@ -32,65 +67,120 @@ const snapshot: InfrastructureSnapshot = {
       mountpoint: '/',
       device: '/dev/nvme0n1p2',
       fstype: 'ext4',
-      sizeBytes: 100,
-      availBytes: 10,
-      usedPercent: 90,
+      sizeBytes: 467 * G,
+      availBytes: 184 * G,
+      usedPercent: 60.6,
       role: 'Система и базы данных (SSD)',
-      status: 'WARNING',
-      issues: ['Раздел заполнен на 90%'],
+      status: 'OK',
+      issues: [],
     },
   ],
   disks: [
+    hdd('sdb', '/mnt/minio-d2'),
+    hdd('sda', '/mnt/minio-d1'),
     {
-      device: 'sda',
-      kind: 'HDD',
-      model: 'ST8000NM012A',
-      serial: 'WSD1',
-      smartPassed: true,
-      temperatureC: 30,
-      powerOnHours: 8760,
-      reallocatedSectors: 0,
-      pendingSectors: 2,
-      offlineUncorrectable: 0,
-      reportedUncorrect: 0,
-      crcErrors: 0,
-      percentageUsed: null,
-      availableSpare: null,
-      availableSpareThreshold: null,
-      mediaErrors: null,
-      criticalWarning: null,
-      bytesWritten: null,
-      ioUtilPercent: 5,
-      status: 'CRITICAL',
-      issues: ['Нечитаемые сектора ждут переназначения: 2'],
+      ...hdd('nvme0n1', '/'),
+      kind: 'NVME',
+      model: 'ARDOR GAMING',
+      role: 'SYSTEM',
+      capacityBytes: 512_110_190_592,
+      percentageUsed: 4,
+      reallocatedSectors: null,
+      pendingSectors: null,
+      offlineUncorrectable: null,
     },
   ],
-  storage: { name: 'S3 (RustFS)', status: 'OK', latencyMs: 3 },
+  storage: {
+    name: 'S3 (RustFS)',
+    status: 'OK',
+    latencyMs: 3,
+    capacity: {
+      drives: 4,
+      parityDrives: 2,
+      rawTotalBytes: 29.2 * T,
+      rawUsedBytes: 1.4 * T,
+      usableTotalBytes: 14.6 * T,
+      usableUsedBytes: 0.7 * T,
+    },
+  },
 };
+
+const renderPage = () =>
+  render(
+    <MemoryRouter>
+      <ServerPage />
+    </MemoryRouter>,
+  );
 
 describe('server infrastructure page', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('shows host tiles, filesystem usage and disk problems', async () => {
+  it('explains RAM, the system SSD and the file storage in plain words', async () => {
     vi.spyOn(infrastructureService, 'snapshot').mockResolvedValue(snapshot);
-    render(
-      <MemoryRouter>
-        <ServerPage />
-      </MemoryRouter>,
-    );
-    const disk = await screen.findByRole('article', { name: 'Диск sda' });
+    renderPage();
     expect(
-      within(disk).getByText('Нечитаемые сектора ждут переназначения: 2'),
+      await screen.findByRole('heading', { name: 'Всё в порядке' }),
     ).toBeVisible();
-    expect(within(disk).getByText('Проблема')).toBeVisible();
-    expect(within(disk).getByText('8 760 ч (1,0 г.)')).toBeVisible();
-    expect(screen.getByText('3 д 4 ч')).toBeVisible();
-    expect(screen.getByText('Система и базы данных (SSD)')).toBeVisible();
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuenow', '90');
-    expect(screen.getByText('ответ за 3 мс')).toBeVisible();
+
+    const ram = screen.getByRole('article', { name: 'Оперативная память' });
+    expect(within(ram).getByText(/Это не место для файлов/)).toBeVisible();
+    expect(within(ram).getByText(/это нормально/)).toBeVisible();
+
+    const ssd = screen.getByRole('article', { name: 'Системный диск' });
+    expect(
+      within(ssd).getByRole('heading', { name: 'Системный диск (SSD 512 ГБ)' }),
+    ).toBeVisible();
+    expect(within(ssd).getByText('Свободно 184 ГБ')).toBeVisible();
+
+    const storage = screen.getByRole('article', { name: 'Хранилище файлов' });
+    expect(within(storage).getByText('Свободно ≈ 13,9 ТБ')).toBeVisible();
+    expect(within(storage).getByText(/поломку любых 2 дисков/)).toBeVisible();
   });
 
-  it('explains a Prometheus outage instead of showing empty tables', async () => {
+  it('names disks by role and keeps SMART counters behind "Подробнее"', async () => {
+    vi.spyOn(infrastructureService, 'snapshot').mockResolvedValue(snapshot);
+    renderPage();
+    const names = (await screen.findAllByRole('article'))
+      .map((a) => a.getAttribute('aria-label'))
+      .filter((n) => n?.startsWith('Системный SSD') || n?.startsWith('Диск'));
+    expect(names).toEqual([
+      'Системный SSD',
+      'Диск хранилища 1',
+      'Диск хранилища 2',
+    ]);
+    const first = screen.getByRole('article', { name: 'Диск хранилища 1' });
+    expect(within(first).getByText('HDD · 8 ТБ · ST8000NM012A')).toBeVisible();
+    expect(within(first).getByText('Исправен')).toBeVisible();
+    expect(
+      within(first).getByText('Переназначенные сектора'),
+    ).not.toBeVisible();
+    fireEvent.click(within(first).getByText('Подробнее'));
+    expect(within(first).getByText('Переназначенные сектора')).toBeVisible();
+  });
+
+  it('lists problems with the place they come from', async () => {
+    vi.spyOn(infrastructureService, 'snapshot').mockResolvedValue({
+      ...snapshot,
+      status: 'CRITICAL',
+      disks: [
+        hdd('sda', '/mnt/minio-d1', {
+          status: 'CRITICAL',
+          pendingSectors: 2,
+          issues: ['Нечитаемые сектора ждут переназначения: 2'],
+        }),
+      ],
+    });
+    renderPage();
+    const verdict = await screen.findByRole('region', { name: 'Итог' });
+    expect(
+      within(verdict).getByRole('heading', { name: 'Есть проблема' }),
+    ).toBeVisible();
+    expect(verdict).toHaveTextContent(
+      'Диск хранилища 1: Нечитаемые сектора ждут переназначения: 2',
+    );
+  });
+
+  it('explains a monitoring outage instead of showing empty sections', async () => {
     vi.spyOn(infrastructureService, 'snapshot').mockResolvedValue({
       ...snapshot,
       status: 'UNKNOWN',
@@ -103,21 +193,20 @@ describe('server infrastructure page', () => {
       host: null,
       filesystems: [],
       disks: [],
+      storage: { ...snapshot.storage, capacity: null },
     });
-    render(
-      <MemoryRouter>
-        <ServerPage />
-      </MemoryRouter>,
-    );
+    renderPage();
     expect(
-      await screen.findByText('Prometheus недоступен: HTTP 502'),
+      await screen.findByText(/сбор показателей недоступен \(HTTP 502\)/),
     ).toBeVisible();
-    expect(screen.queryByRole('heading', { name: 'Диски' })).toBeNull();
+    expect(
+      screen.queryByRole('heading', { name: 'Физические диски' }),
+    ).toBeNull();
   });
 
   it('formats byte sizes', () => {
     expect(formatBytes(512)).toBe('512 Б');
-    expect(formatBytes(7.3 * 1024 ** 4)).toBe('7,3 ТБ');
+    expect(formatBytes(7.3 * T)).toBe('7,3 ТБ');
     expect(formatBytes(null)).toBe('—');
   });
 });

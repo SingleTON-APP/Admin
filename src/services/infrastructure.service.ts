@@ -26,7 +26,10 @@ export interface InfraDisk extends Assessment {
   mediaErrors: number | null;
   criticalWarning: number | null;
   bytesWritten: number | null;
+  capacityBytes: number | null;
   ioUtilPercent: number | null;
+  role: 'SYSTEM' | 'STORAGE' | 'OTHER';
+  mountpoints: string[];
 }
 
 export interface InfraFilesystem extends Assessment {
@@ -70,6 +73,14 @@ export interface InfrastructureSnapshot {
     status: InfraStatus;
     latencyMs: number | null;
     reason?: string;
+    capacity: {
+      drives: number;
+      parityDrives: number;
+      rawTotalBytes: number;
+      rawUsedBytes: number;
+      usableTotalBytes: number;
+      usableUsedBytes: number;
+    } | null;
   };
 }
 
