@@ -46,6 +46,7 @@ export function StatusBadge({ value }: { value: string }) {
       : [
             'degraded',
             'suspended',
+            'unverified',
             'high',
             'in review',
             'высокий',

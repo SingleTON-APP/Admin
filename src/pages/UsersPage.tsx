@@ -111,6 +111,7 @@ export function UsersPage() {
           <option value="ACTIVE">Active</option>
           <option value="SUSPENDED">Suspended</option>
           <option value="BANNED">Banned</option>
+          <option value="UNVERIFIED">Unverified</option>
           <option value="DELETED">Deleted</option>
         </select>
         <select
