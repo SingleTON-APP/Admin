@@ -1,6 +1,7 @@
 export type StaffRole = 'MODERATOR' | 'ADMIN' | 'FULL_ADMIN';
 export type UserRole = 'USER' | StaffRole;
-export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'DELETED';
+// UNVERIFIED — регистрация без подтверждения кода (раньше показывалась как DELETED).
+export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'DELETED' | 'UNVERIFIED';
 export type ReportStatus = 'OPEN' | 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
 export type ReportPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ReportTargetType =
