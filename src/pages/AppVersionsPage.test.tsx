@@ -30,6 +30,15 @@ const snapshot = {
       message: null,
       updatedAt: null,
     },
+    {
+      platform: 'macos' as const,
+      latestBuild: 2,
+      minBuild: null,
+      latestVersion: '1.0 (2)',
+      storeUrl: null,
+      message: null,
+      updatedAt: null,
+    },
   ],
   installed: [
     {
@@ -58,6 +67,8 @@ describe('app versions page', () => {
     const ios = await screen.findByRole('form', { name: 'iPhone (iOS)' });
     expect(within(ios).getByDisplayValue('5')).toBeVisible();
     expect(within(ios).getByDisplayValue('1.0 (5)')).toBeVisible();
+    const mac = screen.getByRole('form', { name: 'Mac (macOS)' });
+    expect(within(mac).getByDisplayValue('1.0 (2)')).toBeVisible();
     expect(screen.getByRole('form', { name: 'Android' })).toBeVisible();
     expect(screen.getByText('0.1.149')).toBeVisible();
   });
