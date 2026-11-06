@@ -1,6 +1,6 @@
 import { request } from '../api/client';
 
-export type AppPlatform = 'ios' | 'android';
+export type AppPlatform = 'ios' | 'android' | 'macos';
 
 export interface AppVersionPolicy {
   platform: AppPlatform;

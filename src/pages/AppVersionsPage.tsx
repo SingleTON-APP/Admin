@@ -12,15 +12,20 @@ import '../styles/app-versions.css';
 const platformName: Record<AppPlatform, string> = {
   ios: 'iPhone (iOS)',
   android: 'Android',
+  macos: 'Mac (macOS)',
 };
 const buildHint: Record<AppPlatform, string> = {
   ios: 'Номер сборки (CFBundleVersion): 4, 5, 6… Название версии на iOS не меняется.',
   android: 'versionCode сборки: 149, 150… (versionName показывается отдельно).',
+  macos:
+    'Номер сборки Mac (CFBundleVersion) — свой счёт, не как у iPhone: 1, 2, 3…',
 };
 const storeHint: Record<AppPlatform, string> = {
   ios: 'Ссылка TestFlight (https://testflight.apple.com/join/…) или App Store.',
   android:
     'Ссылка Google Play: https://play.google.com/store/apps/details?id=org.hubnet.android',
+  macos:
+    'Ссылка TestFlight или Mac App Store (https://apps.apple.com/app/id6826871493).',
 };
 
 type Draft = {
@@ -121,7 +126,7 @@ function PolicyCard({
           <input
             type="text"
             maxLength={32}
-            placeholder={policy.platform === 'ios' ? '1.0 (5)' : '0.1.150'}
+            placeholder={policy.platform === 'android' ? '0.1.150' : '1.0 (5)'}
             value={draft.latestVersion}
             onChange={(e) => set({ latestVersion: e.target.value })}
           />
@@ -205,7 +210,7 @@ export function AppVersionsPage() {
       <PageHeader
         eyebrow="Обновления"
         title="Версии приложений"
-        description="После загрузки новой сборки в TestFlight или Google Play укажите её номер — приложения предложат обновиться. Минимальная сборка заставляет обновиться всех, кто ниже."
+        description="После загрузки новой сборки в TestFlight, App Store или Google Play укажите её номер — приложения предложат обновиться. Минимальная сборка заставляет обновиться всех, кто ниже."
       />
       {state.error && (
         <p className="health-stale" role="alert">
